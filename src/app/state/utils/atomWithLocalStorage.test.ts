@@ -11,19 +11,26 @@ const storeKey = 'test.atomWithLocalStorage';
 const getItemMock = (key: string) => getLocalStorageItem<string[]>(key, []);
 
 let storage: Map<string, string>;
+const handlers = new Map<string, (evt: StorageEvent) => void>();
 
 beforeEach(() => {
   storage = new Map();
+  handlers.clear();
   vi.stubGlobal('localStorage', {
     getItem: (key: string) => storage.get(key) ?? null,
     setItem: (key: string, value: string) => {
-      storage.set(key, value);
+      storage.set(key, String(value));
     },
     removeItem: (key: string) => {
       storage.delete(key);
     },
   });
-  vi.stubGlobal('window', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+  vi.stubGlobal('window', {
+    addEventListener: vi.fn((type: string, cb: (evt: StorageEvent) => void) => {
+      handlers.set(type, cb);
+    }),
+    removeEventListener: vi.fn(),
+  });
 });
 
 afterEach(() => {
@@ -71,9 +78,8 @@ describe('atomWithLocalStorage', () => {
     const atom = atomWithLocalStorage<string[]>(storeKey, getItemMock, setLocalStorageItem);
     const store = createStore();
     const unsub = store.sub(atom, () => {});
-    const [, listener] = vi.mocked(window.addEventListener).mock.calls[0]!;
     storage.set(storeKey, JSON.stringify(['sync']));
-    listener({ key: storeKey } as StorageEvent);
+    handlers.get('storage')!({ key: storeKey } as StorageEvent);
     expect(store.get(atom)).toEqual(['sync']);
     unsub();
   });
