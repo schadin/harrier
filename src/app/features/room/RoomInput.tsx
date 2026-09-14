@@ -11,7 +11,7 @@ import { useAtom, useAtomValue } from 'jotai';
 import { isKeyHotkey } from 'is-hotkey';
 import { EventType, IContent, MsgType, RelationType, Room } from 'matrix-js-sdk';
 import { ReactEditor } from 'slate-react';
-import { Transforms, Editor } from 'slate';
+import { Descendant, Transforms, Editor } from 'slate';
 import {
   Box,
   Dialog,
@@ -70,11 +70,13 @@ import { useFileDropZone } from '../../hooks/useFileDrop';
 import {
   TUploadItem,
   TUploadMetadata,
+  getMsgDraftStorageKey,
   roomIdToMsgDraftAtomFamily,
   roomIdToReplyDraftAtomFamily,
   roomIdToUploadItemsAtomFamily,
   roomUploadAtomFamily,
 } from '../../state/room/roomInputDrafts';
+import { setLocalStorageItem } from '../../state/utils/atomWithLocalStorage';
 import { UploadCardRenderer } from '../../components/upload-card';
 import {
   UploadBoard,
@@ -229,6 +231,17 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     useEffect(() => {
       Transforms.insertFragment(editor, msgDraft);
     }, [editor, msgDraft]);
+
+    useEffect(() => {
+      const flushDraft = () => {
+        const draft: Descendant[] = isEmptyEditor(editor)
+          ? []
+          : (JSON.parse(JSON.stringify(editor.children)) as Descendant[]);
+        setLocalStorageItem(getMsgDraftStorageKey(roomId), draft);
+      };
+      window.addEventListener('pagehide', flushDraft);
+      return () => window.removeEventListener('pagehide', flushDraft);
+    }, [roomId, editor]);
 
     useEffect(
       () => () => {
