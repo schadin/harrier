@@ -24,6 +24,7 @@ import { ReactEditor } from 'slate-react';
 import { IContent, IMentions, MatrixEvent, RelationType, Room } from 'matrix-js-sdk';
 import type { RoomMessageEventContent } from 'matrix-js-sdk/lib/@types/events';
 import { isKeyHotkey } from 'is-hotkey';
+import { notifySendError } from '../../../utils/send';
 import {
   AUTOCOMPLETE_PREFIXES,
   AutocompletePrefix,
@@ -154,7 +155,12 @@ export const MessageEditor = as<'div', MessageEditorProps>(
           },
         };
 
-        return mx.sendMessage(roomId, content as unknown as RoomMessageEventContent);
+        return mx
+          .sendMessage(roomId, content as unknown as RoomMessageEventContent)
+          .catch((error) => {
+            notifySendError(error);
+            throw error;
+          });
       }, [mx, editor, roomId, mEvent, isMarkdown, getPrevBodyAndFormattedBody])
     );
 

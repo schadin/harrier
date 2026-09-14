@@ -83,6 +83,7 @@ import {
   isMembershipChanged,
 } from '../../utils/room';
 import { isVisibleTimelineEvent } from '../../utils/timelineVisibility';
+import { sendEventSafely } from '../../utils/send';
 import { useSetting } from '../../state/hooks/settings';
 import { MessageLayout, settingsAtom } from '../../state/settings';
 import { useMatrixEventRenderer } from '../../hooks/useMatrixEventRenderer';
@@ -1009,7 +1010,8 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       const rShortcode =
         shortcode ||
         (reactions.find(eventWithShortcode)?.getContent().shortcode as string | undefined);
-      mx.sendEvent(
+      sendEventSafely(
+        mx,
         room.roomId,
         MessageEvent.Reaction as any,
         getReactionContent(targetEventId, key, rShortcode)

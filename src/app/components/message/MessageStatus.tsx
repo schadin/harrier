@@ -61,12 +61,18 @@ export function MessageStatus({ room, mEvent }: MessageStatusProps) {
   const mDirects = useAtomValue(mDirectAtom);
   const [directReadReceipts] = useSetting(settingsAtom, 'directReadReceipts');
 
-  if (
-    mEvent.getSender() !== mx.getUserId() ||
-    !mDirects.has(room.roomId) ||
-    directReadReceipts !== 'checkmark'
-  )
-    return null;
+  if (mEvent.getSender() !== mx.getUserId()) return null;
+
+  const sendStatus = mEvent.getAssociatedStatus();
+  const isSending =
+    sendStatus === EventStatus.SENDING ||
+    sendStatus === EventStatus.QUEUED ||
+    sendStatus === EventStatus.ENCRYPTING;
+  const isFailed = sendStatus === EventStatus.NOT_SENT || sendStatus === EventStatus.CANCELLED;
+
+  if (isSending || isFailed) return <MessageStatusIndicator room={room} mEvent={mEvent} />;
+
+  if (!mDirects.has(room.roomId) || directReadReceipts !== 'checkmark') return null;
 
   return <MessageStatusIndicator room={room} mEvent={mEvent} />;
 }

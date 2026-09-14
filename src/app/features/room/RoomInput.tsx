@@ -91,6 +91,7 @@ import {
 import { getImageUrlBlob, loadImageElement } from '../../utils/dom';
 import { safeFile } from '../../utils/mimeTypes';
 import { fulfilledPromiseSettledResult } from '../../utils/common';
+import { sendEventSafely, sendMessageSafely } from '../../utils/send';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
 import {
@@ -293,7 +294,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       });
       handleCancelUpload(uploads);
       const contents = fulfilledPromiseSettledResult(await Promise.allSettled(contentsPromises));
-      contents.forEach((content) => mx.sendMessage(roomId, content as any));
+      contents.forEach((content) => sendMessageSafely(mx, roomId, content as any));
     };
 
     const submit = useCallback(() => {
@@ -372,7 +373,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           content['m.relates_to'].is_falling_back = false;
         }
       }
-      mx.sendMessage(roomId, content as any);
+      sendMessageSafely(mx, roomId, content as any);
       resetEditor(editor);
       resetEditorHistory(editor);
       setReplyDraft(undefined);
@@ -439,7 +440,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         await getImageUrlBlob(stickerUrl)
       );
 
-      mx.sendEvent(roomId, EventType.Sticker, {
+      sendEventSafely(mx, roomId, EventType.Sticker, {
         body: label,
         url: mxc,
         info,

@@ -32,7 +32,7 @@ import React, {
 } from 'react';
 import FocusTrap from 'focus-trap-react';
 import { useHover, useFocusWithin } from 'react-aria';
-import { MatrixEvent, Room } from 'matrix-js-sdk';
+import { EventStatus, MatrixEvent, Room } from 'matrix-js-sdk';
 import { Relations } from 'matrix-js-sdk/lib/models/relations';
 import classNames from 'classnames';
 import { RoomPinnedEventsEventContent } from 'matrix-js-sdk/lib/types';
@@ -70,6 +70,7 @@ import { copyToClipboard } from '../../../utils/dom';
 import { stopPropagation } from '../../../utils/keyboard';
 import { getMatrixToRoomEvent } from '../../../plugins/matrix-to';
 import { getViaServers } from '../../../plugins/via-servers';
+import { notifySendError } from '../../../utils/send';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { useRoomPinnedEvents } from '../../../hooks/useRoomPinnedEvents';
 import { MemberPowerTag, StateEvent } from '../../../../types/matrix/room';
@@ -339,6 +340,72 @@ export const MessageCopyLinkItem = as<
     >
       <Text className={css.MessageMenuItemText} as="span" size="T300" truncate>
         Copy Link
+      </Text>
+    </MenuItem>
+  );
+});
+
+export const MessageResendItem = as<
+  'button',
+  {
+    room: Room;
+    mEvent: MatrixEvent;
+    onClose?: () => void;
+  }
+>(({ room, mEvent, onClose, ...props }, ref) => {
+  const mx = useMatrixClient();
+
+  const handleResend = () => {
+    mx.resendEvent(mEvent, room).catch(notifySendError);
+    onClose?.();
+  };
+
+  return (
+    <MenuItem
+      size="300"
+      after={<Icon size="100" src={Icons.Reload} />}
+      radii="300"
+      onClick={handleResend}
+      {...props}
+      ref={ref}
+    >
+      <Text className={css.MessageMenuItemText} as="span" size="T300" truncate>
+        Resend
+      </Text>
+    </MenuItem>
+  );
+});
+
+export const MessageRemoveLocalItem = as<
+  'button',
+  {
+    room: Room;
+    mEvent: MatrixEvent;
+    onClose?: () => void;
+  }
+>(({ mEvent, onClose, ...props }, ref) => {
+  const mx = useMatrixClient();
+
+  const handleRemove = () => {
+    try {
+      mx.cancelPendingEvent(mEvent);
+    } catch (error) {
+      console.error('Failed to remove local event:', error);
+    }
+    onClose?.();
+  };
+
+  return (
+    <MenuItem
+      size="300"
+      after={<Icon size="100" src={Icons.Cross} />}
+      radii="300"
+      onClick={handleRemove}
+      {...props}
+      ref={ref}
+    >
+      <Text className={css.MessageMenuItemText} as="span" size="T300" truncate>
+        Remove Locally
       </Text>
     </MenuItem>
   );
@@ -872,6 +939,11 @@ export const Message = as<'div', MessageProps>(
 
     const isThreadedMessage = mEvent.threadRootId !== undefined;
 
+    const sendStatus = mEvent.getAssociatedStatus();
+    const isFailedSend =
+      mEvent.getSender() === mx.getUserId() &&
+      (sendStatus === EventStatus.NOT_SENT || sendStatus === EventStatus.CANCELLED);
+
     return (
       <MessageBase
         className={classNames(css.MessageBase, className, {
@@ -1067,6 +1139,16 @@ export const Message = as<'div', MessageProps>(
                                 Edit Message
                               </Text>
                             </MenuItem>
+                          )}
+                          {isFailedSend && (
+                            <>
+                              <MessageResendItem room={room} mEvent={mEvent} onClose={closeMenu} />
+                              <MessageRemoveLocalItem
+                                room={room}
+                                mEvent={mEvent}
+                                onClose={closeMenu}
+                              />
+                            </>
                           )}
                           {!hideReadReceipts && (
                             <MessageReadReceiptItem
