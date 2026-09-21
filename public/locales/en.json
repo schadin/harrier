@@ -4,6 +4,31 @@
       "changed_room_name": " changed room name"
     }
   },
+  "DsTaskBot": {
+    "SettingsTitle": "DsTaskBot",
+    "BotMxid": "Bot MXID",
+    "BotMxidDescription": "Matrix ID of the task bot. Its replies are parsed and commands forwarded.",
+    "Save": "Save",
+    "Features": "Features",
+    "CommandHelpers": "Command helpers",
+    "CommandHelpersDescription": "Enable the /dstask command and autocomplete for the bot.",
+    "TaskCards": "Task cards",
+    "TaskCardsDescription": "Render bot task lists as cards in the timeline.",
+    "TasksTab": "Tasks tab",
+    "TasksTabDescription": "Show the Tasks tab in chat rooms with the bot.",
+    "CollapseCommands": "Collapse bot commands",
+    "CollapseCommandsDescription": "Collapse list, all and close commands in the room timeline.",
+    "Tasks": "Tasks",
+    "AssignedToMe": "Assigned to me",
+    "AssignedByMe": "Assigned by me",
+    "TaskCreated": "Task created",
+    "CloseTask": "Close",
+    "Refresh": "Refresh",
+    "Timeout": "The bot did not respond. Showing what we have.",
+    "OpenHint": "Open the tab to load tasks from the bot.",
+    "CloseIds": "close",
+    "CommandDescription": "Send command to DsTaskBot: list | all | close N | @user text"
+  },
   "DecryptionFailure": {
     "Action": {
       "RequestKey": "Request key",

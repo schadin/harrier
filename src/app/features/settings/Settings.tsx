@@ -31,6 +31,7 @@ import { Devices } from './devices';
 import { EmojisStickers } from './emojis-stickers';
 import { DeveloperTools } from './developer-tools';
 import { About } from './about';
+import { DsTaskBot } from './ds-task-bot';
 import { UseStateProvider } from '../../components/UseStateProvider';
 import { stopPropagation } from '../../utils/keyboard';
 import { LogoutDialog } from '../../components/LogoutDialog';
@@ -43,6 +44,7 @@ export enum SettingsPages {
   DevicesPage,
   EmojisStickersPage,
   DeveloperToolsPage,
+  DsTaskBotPage,
   AboutPage,
 }
 
@@ -89,6 +91,11 @@ const useSettingsMenuItems = (): SettingsMenuItem[] =>
         page: SettingsPages.DeveloperToolsPage,
         name: 'Developer Tools',
         icon: Icons.Terminal,
+      },
+      {
+        page: SettingsPages.DsTaskBotPage,
+        name: 'DsTaskBot',
+        icon: Icons.Inbox,
       },
       {
         page: SettingsPages.AboutPage,
@@ -223,9 +230,7 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
       {activePage === SettingsPages.AccountPage && (
         <Account requestClose={handlePageRequestClose} />
       )}
-      {activePage === SettingsPages.StatusPage && (
-        <Status requestClose={handlePageRequestClose} />
-      )}
+      {activePage === SettingsPages.StatusPage && <Status requestClose={handlePageRequestClose} />}
       {activePage === SettingsPages.NotificationPage && (
         <Notifications requestClose={handlePageRequestClose} />
       )}
@@ -237,6 +242,9 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
       )}
       {activePage === SettingsPages.DeveloperToolsPage && (
         <DeveloperTools requestClose={handlePageRequestClose} />
+      )}
+      {activePage === SettingsPages.DsTaskBotPage && (
+        <DsTaskBot requestClose={handlePageRequestClose} />
       )}
       {activePage === SettingsPages.AboutPage && <About requestClose={handlePageRequestClose} />}
     </PageRoot>

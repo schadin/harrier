@@ -1,4 +1,29 @@
 {
+  "DsTaskBot": {
+    "SettingsTitle": "DsTaskBot",
+    "BotMxid": "MXID бота",
+    "BotMxidDescription": "Matrix ID бота задач. Его ответы распознаются, команды пересылаются.",
+    "Save": "Сохранить",
+    "Features": "Возможности",
+    "CommandHelpers": "Помощники команд",
+    "CommandHelpersDescription": "Включить команду /dstask и автодополнение для бота.",
+    "TaskCards": "Карточки задач",
+    "TaskCardsDescription": "Отрисовывать списки задач бота карточками в таймлайне.",
+    "TasksTab": "Вкладка «Задачи»",
+    "TasksTabDescription": "Показывать вкладку «Задачи» в чатах с ботом.",
+    "CollapseCommands": "Сворачивать команды бота",
+    "CollapseCommandsDescription": "Сворачивать команды list, all и close в таймлайне комнаты.",
+    "Tasks": "Задачи",
+    "AssignedToMe": "Назначены мне",
+    "AssignedByMe": "Назначены мной",
+    "TaskCreated": "Задача создана",
+    "CloseTask": "Закрыть",
+    "Refresh": "Обновить",
+    "Timeout": "Бот не ответил. Показываем то, что есть.",
+    "OpenHint": "Откройте вкладку, чтобы загрузить задачи от бота.",
+    "CloseIds": "закрыть",
+    "CommandDescription": "Отправить команду DsTaskBot: list | all | close N | @user текст"
+  },
   "DecryptionFailure": {
     "Action": {
       "RequestKey": "Запросить ключ",

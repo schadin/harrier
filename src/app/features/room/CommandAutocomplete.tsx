@@ -101,7 +101,7 @@ export function CommandAutocomplete({
               {`/${commandName}`}
             </Text>
             <Text truncate priority="300" size="T200">
-              {commands[commandName].description}
+              {commands[commandName]?.description}
             </Text>
           </Box>
         </MenuItem>

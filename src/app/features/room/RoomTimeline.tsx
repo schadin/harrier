@@ -49,6 +49,11 @@ import { Opts as LinkifyOpts } from 'linkifyjs';
 import { useTranslation } from 'react-i18next';
 import { eventWithShortcode, factoryEventSentBy, getMxIdLocalPart } from '../../utils/matrix';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
+import { useDsTaskBotSettings } from '../../state/dsTaskBot';
+import { parseBotMessage } from '../ds-task-bot/parser';
+import { isBotCommandMessage } from '../ds-task-bot/helpers';
+import { DsTaskBotCards } from '../ds-task-bot/DsTaskBotCards';
+import { CollapsedBotCommand } from '../ds-task-bot/CollapsedBotCommand';
 import { useVirtualPaginator, ItemRange } from '../../hooks/useVirtualPaginator';
 import { useAlive } from '../../hooks/useAlive';
 import { editableActiveElement, scrollToBottom } from '../../utils/dom';
@@ -437,6 +442,7 @@ const getRoomUnreadInfo = (room: Room, scrollTo = false) => {
 
 export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimelineProps) {
   const mx = useMatrixClient();
+  const dsTaskBotSettings = useDsTaskBotSettings();
   const openSettingsPage = useOpenSettingsPage();
   const useAuthentication = useMediaAuthentication();
   const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
@@ -1051,6 +1057,12 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         const senderDisplayName =
           getMemberDisplayName(room, senderId) ?? getMxIdLocalPart(senderId) ?? senderId;
 
+        const dsBotMxid = dsTaskBotSettings.botMxid;
+        const parsedBotContent =
+          dsTaskBotSettings.cardsEnabled && dsBotMxid !== '' && senderId === dsBotMxid
+            ? parseBotMessage(mEvent, dsBotMxid)
+            : null;
+
         return (
           <Message
             key={mEvent.getId()}
@@ -1108,22 +1120,37 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             hour24Clock={hour24Clock}
             dateFormatString={dateFormatString}
           >
-            {mEvent.isRedacted() ? (
-              <RedactedContent reason={mEvent.getUnsigned().redacted_because?.content.reason} />
-            ) : (
-              <RenderMessageContent
-                displayName={senderDisplayName}
-                msgType={mEvent.getContent().msgtype ?? ''}
-                ts={mEvent.getTs()}
-                edited={!!editedEvent}
-                getContent={getContent}
-                mediaAutoLoad={mediaAutoLoad}
-                urlPreview={showUrlPreview}
-                htmlReactParserOptions={htmlReactParserOptions}
-                linkifyOpts={linkifyOpts}
-                outlineAttachment={messageLayout === MessageLayout.Bubble}
-              />
-            )}
+            {(() => {
+              if (mEvent.isRedacted()) {
+                return (
+                  <RedactedContent reason={mEvent.getUnsigned().redacted_because?.content.reason} />
+                );
+              }
+              if (parsedBotContent && mx.getUserId()) {
+                return (
+                  <DsTaskBotCards
+                    parsed={parsedBotContent}
+                    mx={mx}
+                    roomId={room.roomId}
+                    myUserId={mx.getUserId() ?? ''}
+                  />
+                );
+              }
+              return (
+                <RenderMessageContent
+                  displayName={senderDisplayName}
+                  msgType={mEvent.getContent().msgtype ?? ''}
+                  ts={mEvent.getTs()}
+                  edited={!!editedEvent}
+                  getContent={getContent}
+                  mediaAutoLoad={mediaAutoLoad}
+                  urlPreview={showUrlPreview}
+                  htmlReactParserOptions={htmlReactParserOptions}
+                  linkifyOpts={linkifyOpts}
+                  outlineAttachment={messageLayout === MessageLayout.Bubble}
+                />
+              );
+            })()}
           </Message>
         );
       },
@@ -1689,15 +1716,39 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       prevEvent.getType() === mEvent.getType() &&
       minuteDifference(prevEvent.getTs(), mEvent.getTs()) < 2;
 
-    const eventJSX = renderMatrixEvent(
-      mEvent.getType(),
-      typeof mEvent.getStateKey() === 'string',
-      mEventId,
-      mEvent,
-      item,
-      timelineSet,
-      collapsed
-    );
+    const collapseBotCommand =
+      dsTaskBotSettings.collapseCommandsEnabled &&
+      !direct &&
+      dsTaskBotSettings.botMxid !== '' &&
+      eventSender !== undefined &&
+      eventSender !== dsTaskBotSettings.botMxid &&
+      isBotCommandMessage(mEvent, dsTaskBotSettings.botMxid);
+
+    let eventJSX: React.ReactNode;
+    if (collapseBotCommand) {
+      const body = typeof mEvent.getContent().body === 'string' ? mEvent.getContent().body : '';
+      const senderName = eventSender
+        ? getMemberDisplayName(room, eventSender) ?? getMxIdLocalPart(eventSender) ?? eventSender
+        : '';
+      eventJSX = (
+        <CollapsedBotCommand
+          key={mEventId}
+          body={body}
+          senderName={senderName}
+          messageSpacing={messageSpacing}
+        />
+      );
+    } else {
+      eventJSX = renderMatrixEvent(
+        mEvent.getType(),
+        typeof mEvent.getStateKey() === 'string',
+        mEventId,
+        mEvent,
+        item,
+        timelineSet,
+        collapsed
+      );
+    }
     prevEvent = mEvent;
     isPrevRendered = !!eventJSX;
 

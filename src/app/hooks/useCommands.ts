@@ -11,6 +11,8 @@ import {
 } from 'matrix-js-sdk';
 import { RoomServerAclEventContent } from 'matrix-js-sdk/lib/types';
 import { useMemo } from 'react';
+import { useAtomValue } from 'jotai';
+import { useTranslation } from 'react-i18next';
 import {
   addRoomIdToMDirect,
   getDMRoomFor,
@@ -27,6 +29,8 @@ import { Membership, StateEvent } from '../../types/matrix/room';
 import { getStateEvent } from '../utils/room';
 import { splitWithSpace } from '../utils/common';
 import { createRoomEncryptionState } from '../components/create-room';
+import { dsTaskBotLastTasksAtom, useDsTaskBotSettings } from '../state/dsTaskBot';
+import { buildBotCommand, isDirectRoomWithBot, sendBotText } from '../features/ds-task-bot/helpers';
 
 export const SHRUG = '¯\\_(ツ)_/¯';
 export const TABLEFLIP = '(╯°□°)╯︵ ┻━┻';
@@ -159,6 +163,7 @@ export enum Command {
   UnFlip = 'unflip',
   Delete = 'delete',
   Acl = 'acl',
+  DsTask = 'dstask',
 }
 
 export type CommandContent = {
@@ -167,10 +172,19 @@ export type CommandContent = {
   exe: CommandExe;
 };
 
-export type CommandRecord = Record<Command, CommandContent>;
+export type CommandRecord = Partial<Record<Command, CommandContent>>;
 
 export const useCommands = (mx: MatrixClient, room: Room): CommandRecord => {
   const { navigateRoom } = useRoomNavigate();
+  const { t } = useTranslation();
+  const dsTaskBotSettings = useDsTaskBotSettings();
+  const dsTaskBotEnabled = dsTaskBotSettings.helpersEnabled && dsTaskBotSettings.botMxid !== '';
+  const dsTaskBotDm = isDirectRoomWithBot(room, dsTaskBotSettings.botMxid);
+  const dsTaskBotLastTasks = useAtomValue(dsTaskBotLastTasksAtom)[room.roomId] ?? [];
+  const dsTaskBotCloseIds = dsTaskBotLastTasks
+    .map((task) => task.id)
+    .slice(0, 5)
+    .join(', ');
 
   const commands: CommandRecord = useMemo(
     () => ({
@@ -531,8 +545,72 @@ export const useCommands = (mx: MatrixClient, room: Room): CommandRecord => {
           await mx.sendStateEvent(room.roomId, StateEvent.RoomServerAcl as any, aclContent);
         },
       },
+      ...(dsTaskBotEnabled
+        ? {
+            [Command.DsTask]: {
+              name: Command.DsTask,
+              description: dsTaskBotCloseIds
+                ? `${t('DsTaskBot.CommandDescription', {
+                    defaultValue: 'Send command to DsTaskBot: list | all | close N | @user text',
+                  })} — ${t('DsTaskBot.CloseIds', { defaultValue: 'close' })} ${dsTaskBotCloseIds}`
+                : t('DsTaskBot.CommandDescription', {
+                    defaultValue: 'Send command to DsTaskBot: list | all | close N | @user text',
+                  }),
+              exe: async (payload) => {
+                const value = payload.trim();
+                if (value === '') return;
+
+                const closeMatch = value.match(/^(close|!close)\s+(\d+)$/);
+                const slashMatch = value.match(/^\/(\d+)$/);
+                const isList = value === 'list';
+                const isAll = value === 'all';
+
+                if (isList || isAll) {
+                  const { body, mentionUserIds } = buildBotCommand(
+                    dsTaskBotSettings.botMxid,
+                    dsTaskBotDm,
+                    isList ? 'list' : 'all',
+                    ''
+                  );
+                  await sendBotText(mx, room.roomId, body, mentionUserIds);
+                  return;
+                }
+                if (closeMatch) {
+                  const { body, mentionUserIds } = buildBotCommand(
+                    dsTaskBotSettings.botMxid,
+                    dsTaskBotDm,
+                    'close',
+                    closeMatch[2]
+                  );
+                  await sendBotText(mx, room.roomId, body, mentionUserIds);
+                  return;
+                }
+                if (slashMatch) {
+                  await sendBotText(mx, room.roomId, `/${slashMatch[1]}`);
+                  return;
+                }
+                const { body, mentionUserIds } = buildBotCommand(
+                  dsTaskBotSettings.botMxid,
+                  dsTaskBotDm,
+                  'create',
+                  value
+                );
+                await sendBotText(mx, room.roomId, body, mentionUserIds);
+              },
+            },
+          }
+        : {}),
     }),
-    [mx, room, navigateRoom]
+    [
+      mx,
+      room,
+      navigateRoom,
+      dsTaskBotEnabled,
+      dsTaskBotSettings.botMxid,
+      dsTaskBotDm,
+      t,
+      dsTaskBotCloseIds,
+    ]
   );
 
   return commands;
