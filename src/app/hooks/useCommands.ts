@@ -31,8 +31,8 @@ import { splitWithSpace } from '../utils/common';
 import { createRoomEncryptionState } from '../components/create-room';
 import { dsTaskBotLastTasksAtom, useDsTaskBotSettings } from '../state/dsTaskBot';
 import {
-  BotCommandAction,
   isDirectRoomWithBot,
+  parseDsTaskPayload,
   sendBotCommand,
 } from '../features/ds-task-bot/helpers';
 
@@ -563,47 +563,17 @@ export const useCommands = (mx: MatrixClient, room: Room): CommandRecord => {
                       'Send command to DsTaskBot: !help | !list | !all | !history | !close N | !file N | !verify',
                   }),
               exe: async (payload) => {
-                const value = payload.trim();
-                if (value === '') return;
+                const parsed = parseDsTaskPayload(payload);
+                if (!parsed) return;
 
-                const command = value.replace(/^!/, '');
-                const simpleMatch = command.match(/^(help|list|all|verify)$/);
-                const closeMatch = command.match(/^close\s+(\d+)$/);
-                const fileMatch = command.match(/^file\s+(\d+)$/);
-                const historyMatch = command.match(/^history(?:\s+([\s\S]*))?$/);
-                const addMatch = command.match(/^add(?:\s+([\s\S]*))?$/);
-
-                const send = (action: BotCommandAction, params = '') =>
-                  sendBotCommand(
-                    mx,
-                    room.roomId,
-                    dsTaskBotSettings.botMxid,
-                    dsTaskBotDm,
-                    action,
-                    params
-                  );
-
-                if (simpleMatch) {
-                  await send(simpleMatch[1] as BotCommandAction);
-                  return;
-                }
-                if (closeMatch) {
-                  await send('close', closeMatch[1]);
-                  return;
-                }
-                if (fileMatch) {
-                  await send('file', fileMatch[1]);
-                  return;
-                }
-                if (historyMatch) {
-                  await send('history', historyMatch[1] ?? '');
-                  return;
-                }
-                if (addMatch) {
-                  await send('create', addMatch[1] ?? '');
-                  return;
-                }
-                await send('create', value);
+                await sendBotCommand(
+                  mx,
+                  room.roomId,
+                  dsTaskBotSettings.botMxid,
+                  dsTaskBotDm,
+                  parsed.action,
+                  parsed.params
+                );
               },
             },
           }

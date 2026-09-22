@@ -6,6 +6,7 @@ import {
   isBotCommandText,
   isBotServiceReply,
   isCollapseAllowed,
+  parseDsTaskPayload,
 } from './helpers';
 
 const BOT_MXID = '@dstaskbot:ds-core.ru';
@@ -78,6 +79,51 @@ describe('buildBotCommand', () => {
     const command = buildBotCommand(BOT_MXID, false, 'create', `${OTHER_MXID} отчёт`);
     expect(command.body).toBe(`${BOT_MXID} ${OTHER_MXID} отчёт`);
     expect(command.mentionUserIds).toEqual([BOT_MXID, OTHER_MXID]);
+  });
+
+  it('пробрасывает теги, срок и текст напоминания в итоговое сообщение', () => {
+    const text = 'напомнить за час #срочно подготовить отчёт';
+    const parsed = parseDsTaskPayload(`add ${text}`)!;
+    const command = buildBotCommand(BOT_MXID, true, parsed.action, parsed.params);
+
+    expect(command.body).toBe(`!add ${text}`);
+  });
+});
+
+describe('parseDsTaskPayload', () => {
+  it('разбирает команды без аргументов', () => {
+    expect(parseDsTaskPayload('help')).toEqual({ action: 'help', params: '' });
+    expect(parseDsTaskPayload('!list')).toEqual({ action: 'list', params: '' });
+    expect(parseDsTaskPayload('verify')).toEqual({ action: 'verify', params: '' });
+  });
+
+  it('разбирает close и file с номером', () => {
+    expect(parseDsTaskPayload('close 8')).toEqual({ action: 'close', params: '8' });
+    expect(parseDsTaskPayload('!file 145')).toEqual({ action: 'file', params: '145' });
+  });
+
+  it('сохраняет человека, дни и тег в истории', () => {
+    expect(parseDsTaskPayload(`history ${OTHER_MXID} 7 #срочно`)).toEqual({
+      action: 'history',
+      params: `${OTHER_MXID} 7 #срочно`,
+    });
+    expect(parseDsTaskPayload('history')).toEqual({ action: 'history', params: '' });
+  });
+
+  it('сохраняет теги, срок и текст напоминания при создании', () => {
+    const text = 'завтра 15:00 #срочно отчёт напомнить за час';
+
+    expect(parseDsTaskPayload(`add ${text}`)).toEqual({ action: 'create', params: text });
+  });
+
+  it('произвольный текст уходит в создание задачи как есть', () => {
+    const text = 'завтра #срочно подготовить отчёт';
+
+    expect(parseDsTaskPayload(text)).toEqual({ action: 'create', params: text });
+  });
+
+  it('пустой payload не даёт команды', () => {
+    expect(parseDsTaskPayload('   ')).toBeUndefined();
   });
 });
 

@@ -101,6 +101,39 @@ const getCommandBody = (action: BotCommandAction, params: string): string => {
 const extractMentionUserIds = (text: string): string[] =>
   text.split(/\s+/).filter((item) => item.startsWith('@') && item.includes(':'));
 
+export type ParsedDsTaskPayload = {
+  action: BotCommandAction;
+  params: string;
+};
+
+/**
+ * Разбирает аргументы `/dstask` в действие бота и параметры. Теги (`#тег`),
+ * сроки и текст напоминаний не разбираются — передаются как есть.
+ */
+export const parseDsTaskPayload = (payload: string): ParsedDsTaskPayload | undefined => {
+  const value = payload.trim();
+  if (value === '') return undefined;
+
+  const command = value.replace(/^!/, '');
+
+  const simpleMatch = command.match(/^(help|list|all|verify)$/);
+  if (simpleMatch) return { action: simpleMatch[1] as BotCommandAction, params: '' };
+
+  const closeMatch = command.match(/^close\s+(\d+)$/);
+  if (closeMatch) return { action: 'close', params: closeMatch[1] };
+
+  const fileMatch = command.match(/^file\s+(\d+)$/);
+  if (fileMatch) return { action: 'file', params: fileMatch[1] };
+
+  const historyMatch = command.match(/^history(?:\s+([\s\S]*))?$/);
+  if (historyMatch) return { action: 'history', params: historyMatch[1] ?? '' };
+
+  const addMatch = command.match(/^add(?:\s+([\s\S]*))?$/);
+  if (addMatch) return { action: 'create', params: addMatch[1] ?? '' };
+
+  return { action: 'create', params: value };
+};
+
 export const buildBotCommand = (
   botMxid: string,
   dm: boolean,
