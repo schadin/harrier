@@ -105,6 +105,7 @@ import {
 import { getMemberDisplayName, getMentionContent, trimReplyFromBody } from '../../utils/room';
 import { CommandAutocomplete } from './CommandAutocomplete';
 import { BotCommandAutocomplete } from '../ds-task-bot/BotCommandAutocomplete';
+import { getBotCommandChipQuery } from '../ds-task-bot/botCommandQuery';
 import { Command, SHRUG, TABLEFLIP, UNFLIP, useCommands } from '../../hooks/useCommands';
 import { mobileOrTablet } from '../../utils/user-agent';
 import { useElementSizeObserver } from '../../hooks/useElementSizeObserver';
@@ -430,7 +431,24 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         const query = prevWordRange
           ? getAutocompleteQuery<AutocompletePrefix>(editor, prevWordRange, AUTOCOMPLETE_PREFIXES)
           : undefined;
-        setAutocompleteQuery(query);
+
+        let nextQuery = query;
+        // Чип /dstask: меню подкоманд бота; не перекрываем меню упоминаний/эмодзи (@, #, :)
+        if (
+          (!query || query.prefix === AutocompletePrefix.BotCommand) &&
+          getBeginCommand(editor) === Command.DsTask
+        ) {
+          const chipQuery = getBotCommandChipQuery(editor);
+          if (chipQuery) {
+            nextQuery = {
+              range: chipQuery.range,
+              prefix: AutocompletePrefix.BotCommand,
+              text: chipQuery.text,
+              viaSlash: true,
+            };
+          }
+        }
+        setAutocompleteQuery(nextQuery);
       },
       [editor, sendTypingStatus, hideActivity]
     );

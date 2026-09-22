@@ -92,6 +92,19 @@ describe('buildBotCommandSuggestions', () => {
 
     expect(suggestion?.description).toBe('Задача 100');
   });
+
+  it('фильтрует номера задач по введённому числу', () => {
+    const custom: DsTask[] = [
+      { id: 144, title: 'Задача 144' },
+      { id: 145, title: 'Задача 145' },
+      { id: 201, title: 'Задача 201' },
+    ];
+    const labels = build('close 1', false, custom).map((s) => s.label);
+
+    expect(labels).toContain('!close 144');
+    expect(labels).toContain('!close 145');
+    expect(labels).not.toContain('!close 201');
+  });
 });
 
 describe('filterBotCommandSuggestions', () => {

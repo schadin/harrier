@@ -19,6 +19,8 @@ export type AutocompleteQuery<TPrefix extends string> = {
   range: BaseRange;
   prefix: TPrefix;
   text: string;
+  // Запрос инициирован чипом slash-команды (например, /dstask), а не префиксом в тексте.
+  viaSlash?: boolean;
 };
 
 export const getAutocompletePrefix = <TPrefix extends string>(

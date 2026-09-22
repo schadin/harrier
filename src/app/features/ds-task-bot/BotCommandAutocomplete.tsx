@@ -42,7 +42,9 @@ export function BotCommandAutocomplete({
 
   const enabled = settings.helpersEnabled && settings.botMxid !== '';
   const dm = enabled && isDirectRoomWithBot(room, settings.botMxid);
-  const allowed = enabled && (dm || hasBotMention(editor, settings.botMxid));
+  // После чипа /dstask упоминание не требуется: sendBotCommand добавит его сам.
+  const allowed =
+    enabled && (dm || query.viaSlash === true || hasBotMention(editor, settings.botMxid));
 
   const suggestions = allowed
     ? filterBotCommandSuggestions(

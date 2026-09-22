@@ -65,16 +65,24 @@ export const buildBotCommandSuggestions = ({
 
   if (query.length === 0) return suggestions;
 
-  NUMERIC_COMMANDS.filter((name) => name.startsWith(query)).forEach((name) => {
-    lastTasks.slice(0, MAX_TASK_SUGGESTIONS).forEach((task) => {
-      suggestions.push({
-        key: `${name}-${task.id}`,
-        match: `${name} ${task.id}`,
-        label: `!${name} ${task.id}`,
-        description: task.title,
-        insert: `!${name} ${task.id} `,
+  NUMERIC_COMMANDS.forEach((name) => {
+    const argMatch = new RegExp(`^${name}(?:\\s+(\\d*))?$`).exec(query);
+    const matchesName = name.startsWith(query);
+    if (!argMatch && !matchesName) return;
+
+    const digitPrefix = argMatch?.[1];
+    lastTasks
+      .filter((task) => digitPrefix === undefined || String(task.id).startsWith(digitPrefix))
+      .slice(0, MAX_TASK_SUGGESTIONS)
+      .forEach((task) => {
+        suggestions.push({
+          key: `${name}-${task.id}`,
+          match: `${name} ${task.id}`,
+          label: `!${name} ${task.id}`,
+          description: task.title,
+          insert: `!${name} ${task.id} `,
+        });
       });
-    });
   });
 
   return suggestions;
