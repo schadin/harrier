@@ -1,6 +1,13 @@
 import { MatrixEvent } from 'matrix-js-sdk';
 import { describe, expect, it } from 'vitest';
-import { parseBotMessage, parseTaskCreated, parseTaskLines, splitTasksByAssignee } from './parser';
+import {
+  parseBotMessage,
+  parseNotice,
+  parseTaskClosed,
+  parseTaskCreated,
+  parseTaskLines,
+  splitTasksByAssignee,
+} from './parser';
 
 const BOT_MXID = '@dstaskbot:ds-core.ru';
 const MY_MXID = '@ashchadin:ds-core.ru';
@@ -95,6 +102,42 @@ describe('parseTaskCreated', () => {
   });
 });
 
+describe('parseTaskClosed', () => {
+  it('парсит подтверждение закрытия задачи (двойной пробел из реального события)', () => {
+    expect(
+      parseTaskClosed('✅ Задача [Добавить в harrier поддержку DsTaskBot]  успешно закрыта!')
+    ).toEqual({
+      title: 'Добавить в harrier поддержку DsTaskBot',
+    });
+  });
+
+  it('не парсит подтверждение создания и списки задач', () => {
+    expect(
+      parseTaskClosed(
+        '⏳ Задача [Завизировать концепцию] для пользователя [@conf-bot:ds-core.ru] успешно создана!'
+      )
+    ).toBeNull();
+    expect(parseTaskClosed('📌 /155 Дашборд поручений (@ashchadin:ds-core.ru)')).toBeNull();
+  });
+});
+
+describe('parseNotice', () => {
+  it('распознаёт однострочные уведомления, завершённые «.» или «!»', () => {
+    expect(parseNotice('Задача не найдена в этой комнате.')).toEqual({
+      text: 'Задача не найдена в этой комнате.',
+    });
+    expect(parseNotice('🥳 Назначенных вам задач нет!')).toEqual({
+      text: '🥳 Назначенных вам задач нет!',
+    });
+  });
+
+  it('не распознаёт заголовки, многострочные ответы и списки задач', () => {
+    expect(parseNotice('@me Вам назначены задачи:')).toBeNull();
+    expect(parseNotice('Строка один\nСтрока два.')).toBeNull();
+    expect(parseNotice('📌 /155 Дашборд поручений (@me)')).toBeNull();
+  });
+});
+
 describe('parseBotMessage', () => {
   it('распознаёт список задач от бота', () => {
     const mEvent = makeEvent(BOT_MXID, '📌 /155 Дашборд поручений (@ashchadin:ds-core.ru)');
@@ -117,6 +160,15 @@ describe('parseBotMessage', () => {
     });
   });
 
+  it('распознаёт подтверждение закрытия', () => {
+    const mEvent = makeEvent(BOT_MXID, '✅ Задача [Дашборд поручений]  успешно закрыта!');
+
+    expect(parseBotMessage(mEvent, BOT_MXID)).toEqual({
+      kind: 'task_closed',
+      task: { title: 'Дашборд поручений' },
+    });
+  });
+
   it('не распознаёт сообщение не от бота', () => {
     const mEvent = makeEvent(
       '@other:ds-core.ru',
@@ -126,10 +178,22 @@ describe('parseBotMessage', () => {
     expect(parseBotMessage(mEvent, BOT_MXID)).toBeNull();
   });
 
-  it('не распознаёт пустые заглушки как списки (null → обычный рендер)', () => {
+  it('распознаёт заглушку пустой секции как служебное уведомление', () => {
     const mEvent = makeEvent(BOT_MXID, '🥳 Назначенных вам задач нет!');
 
-    expect(parseBotMessage(mEvent, BOT_MXID)).toBeNull();
+    expect(parseBotMessage(mEvent, BOT_MXID)).toEqual({
+      kind: 'notice',
+      notice: { text: '🥳 Назначенных вам задач нет!' },
+    });
+  });
+
+  it('распознаёт служебное уведомление об ошибке', () => {
+    const mEvent = makeEvent(BOT_MXID, 'Задача не найдена в этой комнате.');
+
+    expect(parseBotMessage(mEvent, BOT_MXID)).toEqual({
+      kind: 'notice',
+      notice: { text: 'Задача не найдена в этой комнате.' },
+    });
   });
 
   it('не распознаёт не-сообщения', () => {

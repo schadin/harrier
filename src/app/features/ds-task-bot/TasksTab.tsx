@@ -5,7 +5,7 @@ import { Box, Button, Icon, Icons, Spinner, Text, config } from 'folds';
 import { SequenceCard } from '../../components/sequence-card';
 import { useBotTaskList } from './hooks';
 import { DsTask } from './parser';
-import { sendBotText } from './helpers';
+import { sendBotCommand } from './helpers';
 import { bumpDsTaskBotRefresh } from '../../state/dsTaskBot';
 
 type TasksTabProps = {
@@ -16,37 +16,49 @@ type TasksTabProps = {
   refreshToken: number;
 };
 
-function TaskItem({ mx, roomId, task }: { mx: MatrixClient; roomId: string; task: DsTask }) {
+function TaskItem({
+  mx,
+  roomId,
+  botMxid,
+  dm,
+  task,
+}: {
+  mx: MatrixClient;
+  roomId: string;
+  botMxid: string;
+  dm: boolean;
+  task: DsTask;
+}) {
   const { t } = useTranslation();
   const handleClose = () => {
-    sendBotText(mx, roomId, `close ${task.id}`).then(() => {
+    sendBotCommand(mx, roomId, botMxid, dm, 'close', String(task.id)).then(() => {
       bumpDsTaskBotRefresh();
     });
+  };
+  const handleFile = () => {
+    sendBotCommand(mx, roomId, botMxid, dm, 'file', String(task.id));
   };
 
   return (
     <Box grow="Yes" alignItems="Center" gap="200">
+      <Box grow="Yes" direction="Column" gap="100">
+        <Text size="T300" truncate>
+          {task.id} {task.title}
+        </Text>
+        <Text size="T200" priority="300" truncate>
+          {task.assignee}
+        </Text>
+      </Box>
       <Button
         as="button"
         size="300"
         variant="Secondary"
         fill="None"
         radii="400"
-        onClick={handleClose}
-        title={`/${task.id}`}
+        onClick={handleFile}
       >
-        <Text size="T200" priority="400">
-          /{task.id}
-        </Text>
+        <Text size="T200">{t('DsTaskBot.TaskFiles', { defaultValue: 'Files' })}</Text>
       </Button>
-      <Box grow="Yes" direction="Column" gap="100">
-        <Text size="T300" truncate>
-          {task.title}
-        </Text>
-        <Text size="T200" priority="300" truncate>
-          {task.assignee}
-        </Text>
-      </Box>
       <Button
         as="button"
         size="300"
@@ -127,13 +139,17 @@ export function TasksTab({ mx, room, botMxid, dm, refreshToken }: TasksTabProps)
               title={t('DsTaskBot.AssignedToMe', { defaultValue: 'Assigned to me' })}
               tasks={sections.assignedToMe}
             >
-              {(task) => <TaskItem mx={mx} roomId={room.roomId} task={task} />}
+              {(task) => (
+                <TaskItem mx={mx} roomId={room.roomId} botMxid={botMxid} dm={dm} task={task} />
+              )}
             </Section>
             <Section
               title={t('DsTaskBot.AssignedByMe', { defaultValue: 'Assigned by me' })}
               tasks={sections.assignedByMe}
             >
-              {(task) => <TaskItem mx={mx} roomId={room.roomId} task={task} />}
+              {(task) => (
+                <TaskItem mx={mx} roomId={room.roomId} botMxid={botMxid} dm={dm} task={task} />
+              )}
             </Section>
           </Box>
         </SequenceCard>

@@ -12,17 +12,19 @@
     "TasksTab": "Вкладка «Задачи»",
     "TasksTabDescription": "Показывать вкладку «Задачи» в чатах с ботом.",
     "CollapseCommands": "Сворачивать команды бота",
-    "CollapseCommandsDescription": "Сворачивать команды list, all и close в таймлайне комнаты.",
+    "CollapseCommandsDescription": "Сворачивать служебные команды бота в таймлайне комнаты.",
     "Tasks": "Задачи",
     "AssignedToMe": "Назначены мне",
     "AssignedByMe": "Назначены мной",
     "TaskCreated": "Задача создана",
+    "TaskClosed": "Задача закрыта",
+    "TaskFiles": "Файлы",
     "CloseTask": "Закрыть",
     "Refresh": "Обновить",
     "Timeout": "Бот не ответил. Показываем то, что есть.",
     "OpenHint": "Откройте вкладку, чтобы загрузить задачи от бота.",
     "CloseIds": "закрыть",
-    "CommandDescription": "Отправить команду DsTaskBot: list | all | close N | @user текст"
+    "CommandDescription": "Отправить команду DsTaskBot: !help | !list | !all | !history | !close N | !file N | !verify"
   },
   "DecryptionFailure": {
     "Action": {

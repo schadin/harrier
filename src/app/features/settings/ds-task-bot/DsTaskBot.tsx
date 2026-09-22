@@ -73,29 +73,31 @@ export function DsTaskBot({ requestClose }: DsTaskBotProps) {
                         'Matrix ID of the task bot. Its replies are parsed and commands forwarded.',
                     })}
                   >
-                    <Box as="form" onSubmit={handleMxidSubmit} gap="200">
-                      <Box grow="Yes">
-                        <Input
-                          name="botMxidInput"
-                          value={botMxidInput}
-                          onChange={handleMxidChange}
-                          autoComplete="off"
-                          variant="Secondary"
+                    <Box direction="Column" grow="Yes" gap="100">
+                      <Box as="form" onSubmit={handleMxidSubmit} gap="200">
+                        <Box grow="Yes" direction="Column">
+                          <Input
+                            name="botMxidInput"
+                            value={botMxidInput}
+                            onChange={handleMxidChange}
+                            autoComplete="off"
+                            variant="Secondary"
+                            radii="300"
+                            style={{ paddingRight: config.space.S200 }}
+                          />
+                        </Box>
+                        <Button
+                          size="400"
+                          variant={hasMxidChanges ? 'Success' : 'Secondary'}
+                          fill={hasMxidChanges ? 'Solid' : 'Soft'}
+                          outlined
                           radii="300"
-                          style={{ paddingRight: config.space.S200 }}
-                        />
+                          disabled={!hasMxidChanges}
+                          type="submit"
+                        >
+                          <Text size="B400">{t('DsTaskBot.Save', { defaultValue: 'Save' })}</Text>
+                        </Button>
                       </Box>
-                      <Button
-                        size="400"
-                        variant={hasMxidChanges ? 'Success' : 'Secondary'}
-                        fill={hasMxidChanges ? 'Solid' : 'Soft'}
-                        outlined
-                        radii="300"
-                        disabled={!hasMxidChanges}
-                        type="submit"
-                      >
-                        <Text size="B400">{t('DsTaskBot.Save', { defaultValue: 'Save' })}</Text>
-                      </Button>
                     </Box>
                   </SettingTile>
                 </SequenceCard>

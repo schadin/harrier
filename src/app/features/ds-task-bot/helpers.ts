@@ -4,6 +4,7 @@ import { MessageEvent } from '../../../types/matrix/room';
 import { getMentionContent } from '../../utils/room';
 import { getMxIdLocalPart } from '../../utils/matrix';
 import { notifySendError } from '../../utils/send';
+import { parseTaskLines } from './parser';
 
 export const BOT_RESPONSE_TIMEOUT_MS = 15000;
 
@@ -58,7 +59,46 @@ export const isDirectRoomWithBot = (room: Room, botMxid: string): boolean => {
 export const getBotMentionBody = (botMxid: string, command: string): string =>
   `${botMxid} ${command}`;
 
-export type BotCommandAction = 'list' | 'all' | 'close' | 'create';
+export type BotCommandAction =
+  | 'help'
+  | 'list'
+  | 'all'
+  | 'history'
+  | 'close'
+  | 'file'
+  | 'verify'
+  | 'create';
+
+const COMMANDS_WITHOUT_ARGS: Partial<Record<BotCommandAction, string>> = {
+  help: '!help',
+  list: '!list',
+  all: '!all',
+  verify: '!verify',
+};
+
+const getCommandBody = (action: BotCommandAction, params: string): string => {
+  const withoutArgs = COMMANDS_WITHOUT_ARGS[action];
+  if (withoutArgs) return withoutArgs;
+
+  const args = params.trim();
+  switch (action) {
+    case 'close':
+      return `!close ${args}`;
+    case 'file':
+      return `!file ${args}`;
+    case 'history':
+      return args === '' ? '!history' : `!history ${args}`;
+    case 'create':
+      return args === '' ? '!add' : `!add ${args}`;
+    default:
+      return args;
+  }
+};
+
+const getExpectedReplies = (action: BotCommandAction): number => (action === 'list' ? 2 : 1);
+
+const extractMentionUserIds = (text: string): string[] =>
+  text.split(/\s+/).filter((item) => item.startsWith('@') && item.includes(':'));
 
 export const buildBotCommand = (
   botMxid: string,
@@ -66,32 +106,63 @@ export const buildBotCommand = (
   action: BotCommandAction,
   params: string
 ): { body: string; mentionUserIds: string[]; expectedReplies: number } => {
-  if (action === 'list' || action === 'all') {
+  const expectedReplies = getExpectedReplies(action);
+
+  if (action === 'create') {
+    const mentioned = extractMentionUserIds(params);
     if (dm) {
-      return { body: action, mentionUserIds: [], expectedReplies: action === 'list' ? 2 : 1 };
+      return {
+        body: getCommandBody('create', params),
+        mentionUserIds: mentioned,
+        expectedReplies,
+      };
     }
     return {
-      body: getBotMentionBody(botMxid, action),
-      mentionUserIds: [botMxid],
-      expectedReplies: action === 'list' ? 2 : 1,
+      body: getBotMentionBody(botMxid, params.trim()),
+      mentionUserIds: [botMxid, ...mentioned],
+      expectedReplies,
     };
   }
 
-  if (action === 'close') {
-    return { body: `close ${params}`, mentionUserIds: [], expectedReplies: 1 };
-  }
+  const body = getCommandBody(action, params);
+  const mentioned = action === 'history' ? extractMentionUserIds(params) : [];
 
-  const mentioned = params
-    .split(/\s+/)
-    .filter((item) => item.startsWith('@') && item.includes(':'));
   if (dm) {
-    return { body: params.trim(), mentionUserIds: mentioned, expectedReplies: 1 };
+    return { body, mentionUserIds: mentioned, expectedReplies };
   }
   return {
-    body: getBotMentionBody(botMxid, params.trim()),
+    body: getBotMentionBody(botMxid, body),
     mentionUserIds: [botMxid, ...mentioned],
-    expectedReplies: 1,
+    expectedReplies,
   };
+};
+
+export const sendBotCommand = async (
+  mx: MatrixClient,
+  roomId: string,
+  botMxid: string,
+  dm: boolean,
+  action: BotCommandAction,
+  params = ''
+): Promise<string | null> => {
+  const { body, mentionUserIds } = buildBotCommand(botMxid, dm, action, params);
+  return sendBotText(mx, roomId, body, mentionUserIds);
+};
+
+const SUBCOMMANDS_WITHOUT_ARGS = ['help', 'verify'];
+const SUBCOMMANDS_WITH_FILTER = ['list', 'all'];
+const SUBCOMMANDS_WITH_ID = ['close', 'file'];
+
+export const isBotCommandText = (text: string): boolean => {
+  const match = /^!([a-z]+)(?:\s+([\s\S]*))?$/.exec(text);
+  if (!match) return false;
+
+  const [, name, args] = match;
+  if (SUBCOMMANDS_WITHOUT_ARGS.includes(name)) return args === undefined;
+  if (SUBCOMMANDS_WITH_FILTER.includes(name)) return true;
+  if (SUBCOMMANDS_WITH_ID.includes(name)) return args !== undefined && /^\d+$/.test(args);
+  if (name === 'history') return true;
+  return false;
 };
 
 export const isBotCommandMessage = (mEvent: MatrixEvent, botMxid: string): boolean => {
@@ -104,18 +175,34 @@ export const isBotCommandMessage = (mEvent: MatrixEvent, botMxid: string): boole
   const text = body.trim();
   if (text === '') return false;
 
-  const CLOSE_PATTERN = /^(close|!close)\s+\d+$/;
-  const SLASH_CLOSE_PATTERN = /^\/\d+$/;
-  if (CLOSE_PATTERN.test(text) || SLASH_CLOSE_PATTERN.test(text)) return true;
+  if (isBotCommandText(text)) return true;
 
   const local = getBotLocalPart(botMxid);
   const serverPart = botMxid.split(':').slice(1).join(':');
   const mentionPattern = new RegExp(
-    `^@${escapeRegExp(local)}(?::${escapeRegExp(
-      serverPart
-    )})?\\s+((?:close|!close)\\s+\\d+|list|all|\\/\\d+)$`
+    `^@${escapeRegExp(local)}(?::${escapeRegExp(serverPart)})?\\s+`
   );
-  return mentionPattern.test(text);
+  const withoutMention = text.replace(mentionPattern, '');
+  return withoutMention !== text && isBotCommandText(withoutMention);
+};
+
+export const BOT_SERVICE_REPLY_MAX_LINES = 2;
+
+export const isBotServiceReply = (mEvent: MatrixEvent, botMxid: string): boolean => {
+  if (mEvent.getType() !== MessageEvent.RoomMessage) return false;
+  if (mEvent.getSender() !== botMxid) return false;
+
+  const { body } = mEvent.getContent();
+  if (typeof body !== 'string') return false;
+
+  const text = body.trim();
+  if (text === '') return false;
+
+  // Списки задач рендерятся карточками и не сворачиваются.
+  if (parseTaskLines(text).length > 0) return false;
+
+  const nonEmptyLines = text.split('\n').filter((line) => line.trim() !== '');
+  return nonEmptyLines.length <= BOT_SERVICE_REPLY_MAX_LINES;
 };
 
 export const getReplyEventId = (mEvent: MatrixEvent): string | undefined =>

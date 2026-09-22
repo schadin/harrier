@@ -1,5 +1,6 @@
 import { atom, useAtomValue, useSetAtom, WritableAtom, getDefaultStore } from 'jotai';
-import { useCallback, useMemo } from 'react';
+import { atomFamily } from 'jotai/utils';
+import { useCallback } from 'react';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import {
   atomWithLocalStorage,
@@ -28,10 +29,10 @@ const DS_TASK_BOT_SETTINGS = 'dsTaskBotSettings';
 
 export type DsTaskBotSettingsAtom = WritableAtom<DsTaskBotSettings, [DsTaskBotSettings], undefined>;
 
-export const makeDsTaskBotSettingsAtom = (userId: string): DsTaskBotSettingsAtom => {
+const makeDsTaskBotSettingsAtom = (userId: string): DsTaskBotSettingsAtom => {
   const storeKey = `${DS_TASK_BOT_SETTINGS}${userId}`;
 
-  const dsTaskBotSettingsAtom = atomWithLocalStorage<DsTaskBotSettings>(
+  return atomWithLocalStorage<DsTaskBotSettings>(
     storeKey,
     (key) => {
       const v = getLocalStorageItem<Partial<DsTaskBotSettings>>(key, {});
@@ -41,15 +42,17 @@ export const makeDsTaskBotSettingsAtom = (userId: string): DsTaskBotSettingsAtom
       setLocalStorageItem(key, value);
     }
   );
-
-  return dsTaskBotSettingsAtom;
 };
+
+export const dsTaskBotSettingsAtomFamily = atomFamily<string, DsTaskBotSettingsAtom>(
+  makeDsTaskBotSettingsAtom
+);
 
 export const useDsTaskBotSettingsAtom = (): DsTaskBotSettingsAtom => {
   const mx = useMatrixClient();
   const userId = mx.getUserId() ?? '';
 
-  return useMemo(() => makeDsTaskBotSettingsAtom(userId), [userId]);
+  return dsTaskBotSettingsAtomFamily(userId);
 };
 
 export const useDsTaskBotSettings = (): DsTaskBotSettings => {

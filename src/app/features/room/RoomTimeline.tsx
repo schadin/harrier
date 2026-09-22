@@ -51,7 +51,7 @@ import { eventWithShortcode, factoryEventSentBy, getMxIdLocalPart } from '../../
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useDsTaskBotSettings } from '../../state/dsTaskBot';
 import { parseBotMessage } from '../ds-task-bot/parser';
-import { isBotCommandMessage } from '../ds-task-bot/helpers';
+import { isBotCommandMessage, isBotServiceReply } from '../ds-task-bot/helpers';
 import { DsTaskBotCards } from '../ds-task-bot/DsTaskBotCards';
 import { CollapsedBotCommand } from '../ds-task-bot/CollapsedBotCommand';
 import { useVirtualPaginator, ItemRange } from '../../hooks/useVirtualPaginator';
@@ -1133,6 +1133,8 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                     mx={mx}
                     roomId={room.roomId}
                     myUserId={mx.getUserId() ?? ''}
+                    botMxid={dsBotMxid}
+                    dm={direct}
                   />
                 );
               }
@@ -1724,8 +1726,14 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       eventSender !== dsTaskBotSettings.botMxid &&
       isBotCommandMessage(mEvent, dsTaskBotSettings.botMxid);
 
+    const collapseBotReply =
+      dsTaskBotSettings.collapseCommandsEnabled &&
+      !direct &&
+      dsTaskBotSettings.botMxid !== '' &&
+      isBotServiceReply(mEvent, dsTaskBotSettings.botMxid);
+
     let eventJSX: React.ReactNode;
-    if (collapseBotCommand) {
+    if (collapseBotCommand || collapseBotReply) {
       const body = typeof mEvent.getContent().body === 'string' ? mEvent.getContent().body : '';
       const senderName = eventSender
         ? getMemberDisplayName(room, eventSender) ?? getMxIdLocalPart(eventSender) ?? eventSender

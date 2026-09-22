@@ -30,7 +30,11 @@ import { getStateEvent } from '../utils/room';
 import { splitWithSpace } from '../utils/common';
 import { createRoomEncryptionState } from '../components/create-room';
 import { dsTaskBotLastTasksAtom, useDsTaskBotSettings } from '../state/dsTaskBot';
-import { buildBotCommand, isDirectRoomWithBot, sendBotText } from '../features/ds-task-bot/helpers';
+import {
+  BotCommandAction,
+  isDirectRoomWithBot,
+  sendBotCommand,
+} from '../features/ds-task-bot/helpers';
 
 export const SHRUG = '¯\\_(ツ)_/¯';
 export const TABLEFLIP = '(╯°□°)╯︵ ┻━┻';
@@ -551,51 +555,55 @@ export const useCommands = (mx: MatrixClient, room: Room): CommandRecord => {
               name: Command.DsTask,
               description: dsTaskBotCloseIds
                 ? `${t('DsTaskBot.CommandDescription', {
-                    defaultValue: 'Send command to DsTaskBot: list | all | close N | @user text',
+                    defaultValue:
+                      'Send command to DsTaskBot: !help | !list | !all | !history | !close N | !file N | !verify',
                   })} — ${t('DsTaskBot.CloseIds', { defaultValue: 'close' })} ${dsTaskBotCloseIds}`
                 : t('DsTaskBot.CommandDescription', {
-                    defaultValue: 'Send command to DsTaskBot: list | all | close N | @user text',
+                    defaultValue:
+                      'Send command to DsTaskBot: !help | !list | !all | !history | !close N | !file N | !verify',
                   }),
               exe: async (payload) => {
                 const value = payload.trim();
                 if (value === '') return;
 
-                const closeMatch = value.match(/^(close|!close)\s+(\d+)$/);
-                const slashMatch = value.match(/^\/(\d+)$/);
-                const isList = value === 'list';
-                const isAll = value === 'all';
+                const command = value.replace(/^!/, '');
+                const simpleMatch = command.match(/^(help|list|all|verify)$/);
+                const closeMatch = command.match(/^close\s+(\d+)$/);
+                const fileMatch = command.match(/^file\s+(\d+)$/);
+                const historyMatch = command.match(/^history(?:\s+([\s\S]*))?$/);
+                const addMatch = command.match(/^add(?:\s+([\s\S]*))?$/);
 
-                if (isList || isAll) {
-                  const { body, mentionUserIds } = buildBotCommand(
+                const send = (action: BotCommandAction, params = '') =>
+                  sendBotCommand(
+                    mx,
+                    room.roomId,
                     dsTaskBotSettings.botMxid,
                     dsTaskBotDm,
-                    isList ? 'list' : 'all',
-                    ''
+                    action,
+                    params
                   );
-                  await sendBotText(mx, room.roomId, body, mentionUserIds);
+
+                if (simpleMatch) {
+                  await send(simpleMatch[1] as BotCommandAction);
                   return;
                 }
                 if (closeMatch) {
-                  const { body, mentionUserIds } = buildBotCommand(
-                    dsTaskBotSettings.botMxid,
-                    dsTaskBotDm,
-                    'close',
-                    closeMatch[2]
-                  );
-                  await sendBotText(mx, room.roomId, body, mentionUserIds);
+                  await send('close', closeMatch[1]);
                   return;
                 }
-                if (slashMatch) {
-                  await sendBotText(mx, room.roomId, `/${slashMatch[1]}`);
+                if (fileMatch) {
+                  await send('file', fileMatch[1]);
                   return;
                 }
-                const { body, mentionUserIds } = buildBotCommand(
-                  dsTaskBotSettings.botMxid,
-                  dsTaskBotDm,
-                  'create',
-                  value
-                );
-                await sendBotText(mx, room.roomId, body, mentionUserIds);
+                if (historyMatch) {
+                  await send('history', historyMatch[1] ?? '');
+                  return;
+                }
+                if (addMatch) {
+                  await send('create', addMatch[1] ?? '');
+                  return;
+                }
+                await send('create', value);
               },
             },
           }
