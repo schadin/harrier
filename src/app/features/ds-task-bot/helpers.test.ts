@@ -18,12 +18,18 @@ const makeEvent = (sender: string, body: string): MatrixEvent =>
     content: { msgtype: 'm.text', body },
   });
 
+const makeEnvelopeEvent = (sender: string, body: string, envelope: unknown): MatrixEvent =>
+  new MatrixEvent({
+    type: 'm.room.message',
+    sender,
+    content: { msgtype: 'm.text', body, 'ru.ds_core.bot': envelope },
+  });
+
 describe('buildBotCommand', () => {
   it('в комнате добавляет упоминание бота к команде с префиксом «!»', () => {
     expect(buildBotCommand(BOT_MXID, false, 'list', '')).toEqual({
       body: `${BOT_MXID} !list`,
       mentionUserIds: [BOT_MXID],
-      expectedReplies: 2,
     });
   });
 
@@ -31,7 +37,6 @@ describe('buildBotCommand', () => {
     expect(buildBotCommand(BOT_MXID, true, 'list', '')).toEqual({
       body: '!list',
       mentionUserIds: [],
-      expectedReplies: 2,
     });
   });
 
@@ -40,7 +45,6 @@ describe('buildBotCommand', () => {
     expect(buildBotCommand(BOT_MXID, true, 'file', '8')).toEqual({
       body: '!file 8',
       mentionUserIds: [],
-      expectedReplies: 1,
     });
   });
 
@@ -60,7 +64,6 @@ describe('buildBotCommand', () => {
     expect(buildBotCommand(BOT_MXID, true, 'create', 'завтра 15:00 #срочно отчёт')).toEqual({
       body: '!add завтра 15:00 #срочно отчёт',
       mentionUserIds: [],
-      expectedReplies: 1,
     });
   });
 
@@ -178,5 +181,77 @@ describe('isBotServiceReply', () => {
     expect(isBotServiceReply(makeEvent(MY_MXID, '🥳 Назначенных вам задач нет!'), BOT_MXID)).toBe(
       false
     );
+  });
+
+  it('сворачивает конверты created, closed, reminder и notice', () => {
+    expect(
+      isBotServiceReply(
+        makeEnvelopeEvent(BOT_MXID, 'создана', {
+          v: 1,
+          kind: 'created',
+          task: { id: 8, title: 'Отчёт', author: MY_MXID, status: 'open' },
+        }),
+        BOT_MXID
+      )
+    ).toBe(true);
+    expect(
+      isBotServiceReply(
+        makeEnvelopeEvent(BOT_MXID, 'закрыта', {
+          v: 1,
+          kind: 'closed',
+          task: { id: 8, title: 'Отчёт', author: MY_MXID, status: 'closed' },
+        }),
+        BOT_MXID
+      )
+    ).toBe(true);
+    expect(
+      isBotServiceReply(
+        makeEnvelopeEvent(BOT_MXID, 'напоминание', {
+          v: 1,
+          kind: 'reminder',
+          task: { id: 8, title: 'Отчёт', author: MY_MXID, status: 'open' },
+        }),
+        BOT_MXID
+      )
+    ).toBe(true);
+    expect(
+      isBotServiceReply(
+        makeEnvelopeEvent(BOT_MXID, '⛔ Нельзя закрыть', { v: 1, kind: 'error', ok: false }),
+        BOT_MXID
+      )
+    ).toBe(true);
+  });
+
+  it('не сворачивает конверты list, file и help', () => {
+    expect(
+      isBotServiceReply(
+        makeEnvelopeEvent(BOT_MXID, 'задачи', {
+          v: 1,
+          kind: 'list',
+          tasks: { items: [{ id: 8, title: 'Отчёт', author: MY_MXID, status: 'open' }] },
+        }),
+        BOT_MXID
+      )
+    ).toBe(false);
+    expect(
+      isBotServiceReply(
+        makeEnvelopeEvent(BOT_MXID, 'файл', {
+          v: 1,
+          kind: 'file',
+          task: { id: 8, title: 'Отчёт', author: MY_MXID, status: 'open' },
+          files: [{ name: 'отчёт.pdf' }],
+        }),
+        BOT_MXID
+      )
+    ).toBe(false);
+    expect(
+      isBotServiceReply(
+        makeEnvelopeEvent(BOT_MXID, 'Доступные команды:\n!help\n!list\n!all', {
+          v: 1,
+          kind: 'help',
+        }),
+        BOT_MXID
+      )
+    ).toBe(false);
   });
 });

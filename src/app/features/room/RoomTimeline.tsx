@@ -1126,19 +1126,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                   <RedactedContent reason={mEvent.getUnsigned().redacted_because?.content.reason} />
                 );
               }
-              if (parsedBotContent && mx.getUserId()) {
-                return (
-                  <DsTaskBotCards
-                    parsed={parsedBotContent}
-                    mx={mx}
-                    roomId={room.roomId}
-                    myUserId={mx.getUserId() ?? ''}
-                    botMxid={dsBotMxid}
-                    dm={direct}
-                  />
-                );
-              }
-              return (
+              const messageContent = (
                 <RenderMessageContent
                   displayName={senderDisplayName}
                   msgType={mEvent.getContent().msgtype ?? ''}
@@ -1152,6 +1140,29 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                   outlineAttachment={messageLayout === MessageLayout.Bubble}
                 />
               );
+
+              if (parsedBotContent && mx.getUserId()) {
+                const botCards = (
+                  <DsTaskBotCards
+                    parsed={parsedBotContent}
+                    mx={mx}
+                    roomId={room.roomId}
+                    myUserId={mx.getUserId() ?? ''}
+                    botMxid={dsBotMxid}
+                    dm={direct}
+                  />
+                );
+                if (parsedBotContent.origin === 'envelope' && parsedBotContent.kind === 'file') {
+                  return (
+                    <Box direction="Column" gap="200">
+                      {botCards}
+                      {messageContent}
+                    </Box>
+                  );
+                }
+                return botCards;
+              }
+              return messageContent;
             })()}
           </Message>
         );

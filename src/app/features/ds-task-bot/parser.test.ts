@@ -23,6 +23,13 @@ const makeEvent = (sender: string, body: string, replyEventId?: string): MatrixE
     },
   });
 
+const makeEnvelopeEvent = (sender: string, body: string, envelope: unknown): MatrixEvent =>
+  new MatrixEvent({
+    type: 'm.room.message',
+    sender,
+    content: { msgtype: 'm.text', body, 'ru.ds_core.bot': envelope },
+  });
+
 describe('parseTaskLines', () => {
   it('парсит строки задач из ответа list (два сообщения)', () => {
     const body =
@@ -139,31 +146,34 @@ describe('parseNotice', () => {
 });
 
 describe('parseBotMessage', () => {
-  it('распознаёт список задач от бота', () => {
+  it('распознаёт список задач от бота (текстовый fallback)', () => {
     const mEvent = makeEvent(BOT_MXID, '📌 /155 Дашборд поручений (@ashchadin:ds-core.ru)');
 
     expect(parseBotMessage(mEvent, BOT_MXID)).toEqual({
+      origin: 'text',
       kind: 'tasks',
       tasks: [{ id: 155, title: 'Дашборд поручений', assignee: '@ashchadin:ds-core.ru' }],
     });
   });
 
-  it('распознаёт подтверждение создания', () => {
+  it('распознаёт подтверждение создания (текстовый fallback)', () => {
     const mEvent = makeEvent(
       BOT_MXID,
       '⏳ Задача [Завизировать концепцию] для пользователя [@conf-bot:ds-core.ru] успешно создана!'
     );
 
     expect(parseBotMessage(mEvent, BOT_MXID)).toEqual({
+      origin: 'text',
       kind: 'task_created',
       task: { title: 'Завизировать концепцию', assignee: '@conf-bot:ds-core.ru' },
     });
   });
 
-  it('распознаёт подтверждение закрытия', () => {
+  it('распознаёт подтверждение закрытия (текстовый fallback)', () => {
     const mEvent = makeEvent(BOT_MXID, '✅ Задача [Дашборд поручений]  успешно закрыта!');
 
     expect(parseBotMessage(mEvent, BOT_MXID)).toEqual({
+      origin: 'text',
       kind: 'task_closed',
       task: { title: 'Дашборд поручений' },
     });
@@ -182,8 +192,9 @@ describe('parseBotMessage', () => {
     const mEvent = makeEvent(BOT_MXID, '🥳 Назначенных вам задач нет!');
 
     expect(parseBotMessage(mEvent, BOT_MXID)).toEqual({
+      origin: 'text',
       kind: 'notice',
-      notice: { text: '🥳 Назначенных вам задач нет!' },
+      text: '🥳 Назначенных вам задач нет!',
     });
   });
 
@@ -191,8 +202,9 @@ describe('parseBotMessage', () => {
     const mEvent = makeEvent(BOT_MXID, 'Задача не найдена в этой комнате.');
 
     expect(parseBotMessage(mEvent, BOT_MXID)).toEqual({
+      origin: 'text',
       kind: 'notice',
-      notice: { text: 'Задача не найдена в этой комнате.' },
+      text: 'Задача не найдена в этой комнате.',
     });
   });
 
@@ -204,6 +216,109 @@ describe('parseBotMessage', () => {
     });
 
     expect(parseBotMessage(mEvent, BOT_MXID)).toBeNull();
+  });
+});
+
+describe('parseBotMessage с конвертом ru.ds_core.bot', () => {
+  it('классифицирует список задач по kind, а не по тексту', () => {
+    const mEvent = makeEnvelopeEvent(BOT_MXID, 'любой текст', {
+      v: 1,
+      kind: 'list',
+      tasks: {
+        scope: 'room',
+        items: [{ id: 8, title: 'Отчёт', author: MY_MXID, status: 'open' }],
+      },
+    });
+
+    expect(parseBotMessage(mEvent, BOT_MXID)).toMatchObject({
+      origin: 'envelope',
+      kind: 'list',
+      scope: 'room',
+      tasks: [{ id: 8, title: 'Отчёт', author: MY_MXID, status: 'open' }],
+    });
+  });
+
+  it('распознаёт закрытие, напоминание и вложения', () => {
+    const closed = parseBotMessage(
+      makeEnvelopeEvent(BOT_MXID, 'closed', {
+        v: 1,
+        kind: 'closed',
+        task: { id: 8, title: 'Отчёт', author: MY_MXID, status: 'closed' },
+      }),
+      BOT_MXID
+    );
+    expect(closed).toMatchObject({ origin: 'envelope', kind: 'closed', task: { id: 8 } });
+
+    const reminder = parseBotMessage(
+      makeEnvelopeEvent(BOT_MXID, 'reminder', {
+        v: 1,
+        kind: 'reminder',
+        task: { id: 8, title: 'Отчёт', author: MY_MXID, status: 'open' },
+      }),
+      BOT_MXID
+    );
+    expect(reminder).toMatchObject({ origin: 'envelope', kind: 'reminder' });
+
+    const file = parseBotMessage(
+      makeEnvelopeEvent(BOT_MXID, 'file', {
+        v: 1,
+        kind: 'file',
+        task: { id: 8, title: 'Отчёт', author: MY_MXID, status: 'open' },
+        files: [{ name: 'отчёт.pdf', mime_type: 'application/pdf', size: 12345 }],
+      }),
+      BOT_MXID
+    );
+    expect(file).toMatchObject({
+      origin: 'envelope',
+      kind: 'file',
+      files: [{ name: 'отчёт.pdf', mimeType: 'application/pdf', size: 12345 }],
+    });
+  });
+
+  it('ошибку и проверку устройства отображает уведомлением', () => {
+    const error = parseBotMessage(
+      makeEnvelopeEvent(BOT_MXID, '⛔ Нельзя закрыть', { v: 1, kind: 'error', ok: false }),
+      BOT_MXID
+    );
+    expect(error).toMatchObject({ origin: 'envelope', kind: 'notice', tone: 'error' });
+
+    const verify = parseBotMessage(
+      makeEnvelopeEvent(BOT_MXID, '✅ Проверка одобрена.', {
+        v: 1,
+        kind: 'verify_approved',
+        user: MY_MXID,
+      }),
+      BOT_MXID
+    );
+    expect(verify).toMatchObject({ origin: 'envelope', kind: 'notice', tone: 'info' });
+  });
+
+  it('справку не превращает в карточку', () => {
+    const mEvent = makeEnvelopeEvent(BOT_MXID, 'Доступные команды: ...', { v: 1, kind: 'help' });
+
+    expect(parseBotMessage(mEvent, BOT_MXID)).toBeNull();
+  });
+
+  it('неизвестный kind или чужая версия — текстовый fallback', () => {
+    const unknownKind = makeEnvelopeEvent(BOT_MXID, 'Задача не найдена в этой комнате.', {
+      v: 1,
+      kind: 'something_new',
+    });
+    expect(parseBotMessage(unknownKind, BOT_MXID)).toEqual({
+      origin: 'text',
+      kind: 'notice',
+      text: 'Задача не найдена в этой комнате.',
+    });
+
+    const otherVersion = makeEnvelopeEvent(BOT_MXID, '🥳 Назначенных вам задач нет!', {
+      v: 2,
+      kind: 'list',
+    });
+    expect(parseBotMessage(otherVersion, BOT_MXID)).toEqual({
+      origin: 'text',
+      kind: 'notice',
+      text: '🥳 Назначенных вам задач нет!',
+    });
   });
 });
 

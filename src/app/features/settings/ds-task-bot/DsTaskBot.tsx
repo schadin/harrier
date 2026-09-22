@@ -37,8 +37,7 @@ export function DsTaskBot({ requestClose }: DsTaskBotProps) {
   const hasMxidChanges = botMxidInput.trim() !== settings.botMxid;
 
   const toggle =
-    (key: 'helpersEnabled' | 'cardsEnabled' | 'tasksTabEnabled' | 'collapseCommandsEnabled') =>
-    (value: boolean) =>
+    (key: 'helpersEnabled' | 'cardsEnabled' | 'collapseCommandsEnabled') => (value: boolean) =>
       updateSettings({ [key]: value });
 
   return (
@@ -110,40 +109,25 @@ export function DsTaskBot({ requestClose }: DsTaskBotProps) {
                     description={t('DsTaskBot.CommandHelpersDescription', {
                       defaultValue: 'Enable the /dstask command and autocomplete for the bot.',
                     })}
-                    after={
-                      <Switch
-                        variant="Primary"
-                        value={settings.helpersEnabled}
-                        onChange={toggle('helpersEnabled')}
-                      />
-                    }
-                  />
+                  >
+                    <Switch
+                      variant="Primary"
+                      value={settings.helpersEnabled}
+                      onChange={toggle('helpersEnabled')}
+                    />
+                  </SettingTile>
                   <SettingTile
                     title={t('DsTaskBot.TaskCards', { defaultValue: 'Task cards' })}
                     description={t('DsTaskBot.TaskCardsDescription', {
                       defaultValue: 'Render bot task lists as cards in the timeline.',
                     })}
-                    after={
-                      <Switch
-                        variant="Primary"
-                        value={settings.cardsEnabled}
-                        onChange={toggle('cardsEnabled')}
-                      />
-                    }
-                  />
-                  <SettingTile
-                    title={t('DsTaskBot.TasksTab', { defaultValue: 'Tasks tab' })}
-                    description={t('DsTaskBot.TasksTabDescription', {
-                      defaultValue: 'Show the Tasks tab in chat rooms with the bot.',
-                    })}
-                    after={
-                      <Switch
-                        variant="Primary"
-                        value={settings.tasksTabEnabled}
-                        onChange={toggle('tasksTabEnabled')}
-                      />
-                    }
-                  />
+                  >
+                    <Switch
+                      variant="Primary"
+                      value={settings.cardsEnabled}
+                      onChange={toggle('cardsEnabled')}
+                    />
+                  </SettingTile>
                   <SettingTile
                     title={t('DsTaskBot.CollapseCommands', {
                       defaultValue: 'Collapse bot commands',
@@ -151,14 +135,13 @@ export function DsTaskBot({ requestClose }: DsTaskBotProps) {
                     description={t('DsTaskBot.CollapseCommandsDescription', {
                       defaultValue: 'Collapse list, all and close commands in the room timeline.',
                     })}
-                    after={
-                      <Switch
-                        variant="Primary"
-                        value={settings.collapseCommandsEnabled}
-                        onChange={toggle('collapseCommandsEnabled')}
-                      />
-                    }
-                  />
+                  >
+                    <Switch
+                      variant="Primary"
+                      value={settings.collapseCommandsEnabled}
+                      onChange={toggle('collapseCommandsEnabled')}
+                    />
+                  </SettingTile>
                 </SequenceCard>
               </Box>
             </Box>

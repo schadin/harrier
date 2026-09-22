@@ -1,4 +1,4 @@
-import { atom, useAtomValue, useSetAtom, WritableAtom, getDefaultStore } from 'jotai';
+import { atom, useAtomValue, useSetAtom, WritableAtom } from 'jotai';
 import { atomFamily } from 'jotai/utils';
 import { useCallback } from 'react';
 import { useMatrixClient } from '../hooks/useMatrixClient';
@@ -13,7 +13,6 @@ export type DsTaskBotSettings = {
   botMxid: string;
   helpersEnabled: boolean;
   cardsEnabled: boolean;
-  tasksTabEnabled: boolean;
   collapseCommandsEnabled: boolean;
 };
 
@@ -21,7 +20,6 @@ export const DEFAULT_DS_TASK_BOT_SETTINGS: DsTaskBotSettings = {
   botMxid: '@dstaskbot:ds-core.ru',
   helpersEnabled: false,
   cardsEnabled: false,
-  tasksTabEnabled: false,
   collapseCommandsEnabled: false,
 };
 
@@ -71,12 +69,6 @@ export const useSetDsTaskBotSettings = (): ((patch: Partial<DsTaskBotSettings>) 
     },
     [setSettings, settings]
   );
-};
-
-export const dstaskBotRefreshAtom = atom(0);
-
-export const bumpDsTaskBotRefresh = (): void => {
-  getDefaultStore().set(dstaskBotRefreshAtom, (v) => v + 1);
 };
 
 export const dsTaskBotLastTasksAtom = atom<Record<string, DsTask[]>>({});

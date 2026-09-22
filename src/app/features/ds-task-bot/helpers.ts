@@ -4,9 +4,7 @@ import { MessageEvent } from '../../../types/matrix/room';
 import { getMentionContent } from '../../utils/room';
 import { getMxIdLocalPart } from '../../utils/matrix';
 import { notifySendError } from '../../utils/send';
-import { parseTaskLines } from './parser';
-
-export const BOT_RESPONSE_TIMEOUT_MS = 15000;
+import { parseBotMessage, parseTaskLines } from './parser';
 
 export const getBotLocalPart = (botMxid: string): string => getMxIdLocalPart(botMxid) ?? botMxid;
 
@@ -95,8 +93,6 @@ const getCommandBody = (action: BotCommandAction, params: string): string => {
   }
 };
 
-const getExpectedReplies = (action: BotCommandAction): number => (action === 'list' ? 2 : 1);
-
 const extractMentionUserIds = (text: string): string[] =>
   text.split(/\s+/).filter((item) => item.startsWith('@') && item.includes(':'));
 
@@ -105,22 +101,18 @@ export const buildBotCommand = (
   dm: boolean,
   action: BotCommandAction,
   params: string
-): { body: string; mentionUserIds: string[]; expectedReplies: number } => {
-  const expectedReplies = getExpectedReplies(action);
-
+): { body: string; mentionUserIds: string[] } => {
   if (action === 'create') {
     const mentioned = extractMentionUserIds(params);
     if (dm) {
       return {
         body: getCommandBody('create', params),
         mentionUserIds: mentioned,
-        expectedReplies,
       };
     }
     return {
       body: getBotMentionBody(botMxid, params.trim()),
       mentionUserIds: [botMxid, ...mentioned],
-      expectedReplies,
     };
   }
 
@@ -128,12 +120,11 @@ export const buildBotCommand = (
   const mentioned = action === 'history' ? extractMentionUserIds(params) : [];
 
   if (dm) {
-    return { body, mentionUserIds: mentioned, expectedReplies };
+    return { body, mentionUserIds: mentioned };
   }
   return {
     body: getBotMentionBody(botMxid, body),
     mentionUserIds: [botMxid, ...mentioned],
-    expectedReplies,
   };
 };
 
@@ -188,9 +179,19 @@ export const isBotCommandMessage = (mEvent: MatrixEvent, botMxid: string): boole
 
 export const BOT_SERVICE_REPLY_MAX_LINES = 2;
 
+const ENVELOPE_COLLAPSIBLE_KINDS = new Set(['notice', 'created', 'closed', 'reminder']);
+
 export const isBotServiceReply = (mEvent: MatrixEvent, botMxid: string): boolean => {
   if (mEvent.getType() !== MessageEvent.RoomMessage) return false;
   if (mEvent.getSender() !== botMxid) return false;
+
+  const parsed = parseBotMessage(mEvent, botMxid);
+  if (parsed) {
+    if (parsed.origin === 'envelope') return ENVELOPE_COLLAPSIBLE_KINDS.has(parsed.kind);
+    return (
+      parsed.kind === 'notice' || parsed.kind === 'task_created' || parsed.kind === 'task_closed'
+    );
+  }
 
   const { body } = mEvent.getContent();
   if (typeof body !== 'string') return false;
@@ -204,6 +205,3 @@ export const isBotServiceReply = (mEvent: MatrixEvent, botMxid: string): boolean
   const nonEmptyLines = text.split('\n').filter((line) => line.trim() !== '');
   return nonEmptyLines.length <= BOT_SERVICE_REPLY_MAX_LINES;
 };
-
-export const getReplyEventId = (mEvent: MatrixEvent): string | undefined =>
-  mEvent.getContent()['m.relates_to']?.['m.in_reply_to']?.event_id;
