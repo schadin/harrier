@@ -5,6 +5,7 @@ import {
   isBotCommandMessage,
   isBotCommandText,
   isBotServiceReply,
+  isCollapseAllowed,
 } from './helpers';
 
 const BOT_MXID = '@dstaskbot:ds-core.ru';
@@ -256,5 +257,20 @@ describe('isBotServiceReply', () => {
         BOT_MXID
       )
     ).toBe(false);
+  });
+});
+
+describe('isCollapseAllowed', () => {
+  it('в обычной комнате разрешает сворачивание', () => {
+    expect(isCollapseAllowed(false, false)).toBe(true);
+    expect(isCollapseAllowed(false, true)).toBe(true);
+  });
+
+  it('в личке с ботом разрешает сворачивание', () => {
+    expect(isCollapseAllowed(true, true)).toBe(true);
+  });
+
+  it('в личке не с ботом запрещает сворачивание', () => {
+    expect(isCollapseAllowed(true, false)).toBe(false);
   });
 });

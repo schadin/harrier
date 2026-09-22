@@ -54,6 +54,11 @@ export const isDirectRoomWithBot = (room: Room, botMxid: string): boolean => {
   return joined.length === 2 && joined.some((member) => member.userId === botMxid);
 };
 
+// В личках сворачиваем служебные сообщения только в переписке с ботом; в обычных
+// комнатах — всегда (при включённой настройке).
+export const isCollapseAllowed = (direct: boolean, dmWithBot: boolean): boolean =>
+  !direct || dmWithBot;
+
 export const getBotMentionBody = (botMxid: string, command: string): string =>
   `${botMxid} ${command}`;
 

@@ -51,7 +51,12 @@ import { eventWithShortcode, factoryEventSentBy, getMxIdLocalPart } from '../../
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useDsTaskBotSettings } from '../../state/dsTaskBot';
 import { parseBotMessage } from '../ds-task-bot/parser';
-import { isBotCommandMessage, isBotServiceReply } from '../ds-task-bot/helpers';
+import {
+  isBotCommandMessage,
+  isBotServiceReply,
+  isCollapseAllowed,
+  isDirectRoomWithBot,
+} from '../ds-task-bot/helpers';
 import { DsTaskBotCards } from '../ds-task-bot/DsTaskBotCards';
 import { CollapsedBotCommand } from '../ds-task-bot/CollapsedBotCommand';
 import { useVirtualPaginator, ItemRange } from '../../hooks/useVirtualPaginator';
@@ -450,6 +455,10 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   const [messageSpacing] = useSetting(settingsAtom, 'messageSpacing');
   const [legacyUsernameColor] = useSetting(settingsAtom, 'legacyUsernameColor');
   const direct = useIsDirectRoom();
+  const botCollapseAllowed = isCollapseAllowed(
+    direct,
+    isDirectRoomWithBot(room, dsTaskBotSettings.botMxid)
+  );
   const [roomReadReceipts] = useSetting(settingsAtom, 'roomReadReceipts');
   const [directReadReceipts] = useSetting(settingsAtom, 'directReadReceipts');
   const readMarkers = useRoomReadMarkers(room);
@@ -1730,6 +1739,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       minuteDifference(prevEvent.getTs(), mEvent.getTs()) < 2;
 
     const collapseBotCommand =
+      botCollapseAllowed &&
       dsTaskBotSettings.collapseCommandsEnabled &&
       dsTaskBotSettings.botMxid !== '' &&
       eventSender !== undefined &&
@@ -1737,6 +1747,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       isBotCommandMessage(mEvent, dsTaskBotSettings.botMxid);
 
     const collapseBotReply =
+      botCollapseAllowed &&
       dsTaskBotSettings.collapseCommandsEnabled &&
       dsTaskBotSettings.botMxid !== '' &&
       isBotServiceReply(mEvent, dsTaskBotSettings.botMxid);
