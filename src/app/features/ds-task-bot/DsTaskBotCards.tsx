@@ -230,6 +230,29 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
       return <NoticeCard tone={parsed.tone} text={parsed.text} task={parsed.task} />;
     }
 
+    if (parsed.kind === 'help') {
+      return (
+        <CardShell>
+          <Box alignItems="Center" gap="200">
+            <Icon size="100" src={Icons.Bulb} />
+            <Text size="T300">{t('DsTaskBot.HelpTitle', { defaultValue: 'Bot commands' })}</Text>
+          </Box>
+          {parsed.entries.map((entry) => (
+            <Box key={entry.command} direction="Column" gap="100">
+              <Text size="T200" priority="400">
+                {entry.command}
+              </Text>
+              {entry.description && (
+                <Text size="T200" priority="300">
+                  {entry.description}
+                </Text>
+              )}
+            </Box>
+          ))}
+        </CardShell>
+      );
+    }
+
     if (parsed.kind === 'file' || parsed.kind === 'file_attached') {
       const { task, files } = parsed;
       return (

@@ -21,6 +21,11 @@ export type DsNotice = {
 export type DsTaskListKind = 'list' | 'history' | 'report';
 export type DsTaskCardKind = 'created' | 'closed' | 'reminder';
 
+export type DsHelpEntry = {
+  command: string;
+  description?: string;
+};
+
 export type ParsedBotMessage =
   | {
       origin: 'envelope';
@@ -32,6 +37,7 @@ export type ParsedBotMessage =
   | { origin: 'envelope'; kind: DsTaskCardKind; task: DsTask }
   | { origin: 'envelope'; kind: 'file' | 'file_attached'; task?: DsTask; files: DsFile[] }
   | { origin: 'envelope'; kind: 'notice'; tone: 'info' | 'error'; text: string; task?: DsTask }
+  | { origin: 'envelope'; kind: 'help'; entries: DsHelpEntry[] }
   | { origin: 'text'; kind: 'tasks'; tasks: DsTask[] }
   | { origin: 'text'; kind: 'task_created'; task: DsTaskCreated }
   | { origin: 'text'; kind: 'task_closed'; task: DsTaskClosed }
@@ -72,6 +78,20 @@ export const parseNotice = (body: string): DsNotice | null => {
   return { text };
 };
 
+// Строка справки: `!команда — описание` (тире может быть —, – или -).
+const HELP_LINE_PATTERN = /^(!\S+(?:\s+\S+)*?)\s+[—–-]\s+(.+)$/;
+const HELP_COMMAND_PATTERN = /^!\S+(?:\s+\S+)*$/;
+
+export const parseHelpEntries = (body: string): DsHelpEntry[] =>
+  body.split('\n').flatMap((line) => {
+    const text = line.trim();
+    if (!text.startsWith('!')) return [];
+    const match = HELP_LINE_PATTERN.exec(text);
+    if (match) return [{ command: match[1], description: match[2].trim() }];
+    if (HELP_COMMAND_PATTERN.test(text)) return [{ command: text }];
+    return [];
+  });
+
 export const parseTextMessage = (body: string): ParsedBotMessage | null => {
   const tasks = parseTaskLines(body);
   if (tasks.length > 0) return { origin: 'text', kind: 'tasks', tasks };
@@ -93,8 +113,11 @@ export const parseEnvelopeMessage = (
   body: string
 ): ParsedBotMessage | null => {
   switch (envelope.kind) {
-    case 'help':
-      return null;
+    case 'help': {
+      const entries = parseHelpEntries(body);
+      if (entries.length === 0) return null;
+      return { origin: 'envelope', kind: 'help', entries };
+    }
     case 'list':
     case 'history':
     case 'report':

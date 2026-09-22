@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canCloseTask,
   parseBotMessage,
+  parseHelpEntries,
   parseNotice,
   parseTaskClosed,
   parseTaskCreated,
@@ -143,6 +144,33 @@ describe('parseNotice', () => {
     expect(parseNotice('@me Вам назначены задачи:')).toBeNull();
     expect(parseNotice('Строка один\nСтрока два.')).toBeNull();
     expect(parseNotice('📌 /155 Дашборд поручений (@me)')).toBeNull();
+  });
+});
+
+describe('parseHelpEntries', () => {
+  it('парсит строки «!команда — описание»', () => {
+    const body = [
+      'Доступные команды:',
+      '!help — список команд',
+      '!add @user текст — создать задачу',
+      '!close N – закрыть задачу',
+      '!file N - файлы задачи',
+    ].join('\n');
+
+    expect(parseHelpEntries(body)).toEqual([
+      { command: '!help', description: 'список команд' },
+      { command: '!add @user текст', description: 'создать задачу' },
+      { command: '!close N', description: 'закрыть задачу' },
+      { command: '!file N', description: 'файлы задачи' },
+    ]);
+  });
+
+  it('принимает строку команды без описания', () => {
+    expect(parseHelpEntries('!help')).toEqual([{ command: '!help' }]);
+  });
+
+  it('игнорирует строки не начинающиеся с «!»', () => {
+    expect(parseHelpEntries('Доступные команды:\nпросто текст')).toEqual([]);
   });
 });
 
@@ -294,8 +322,28 @@ describe('parseBotMessage с конвертом ru.ds_core.bot', () => {
     expect(verify).toMatchObject({ origin: 'envelope', kind: 'notice', tone: 'info' });
   });
 
-  it('справку не превращает в карточку', () => {
-    const mEvent = makeEnvelopeEvent(BOT_MXID, 'Доступные команды: ...', { v: 1, kind: 'help' });
+  it('справку превращает в карточку со списком команд', () => {
+    const body = [
+      'Доступные команды:',
+      '!help — список команд',
+      '!list — ваши задачи',
+      '!close N — закрыть задачу',
+    ].join('\n');
+    const mEvent = makeEnvelopeEvent(BOT_MXID, body, { v: 1, kind: 'help' });
+
+    expect(parseBotMessage(mEvent, BOT_MXID)).toEqual({
+      origin: 'envelope',
+      kind: 'help',
+      entries: [
+        { command: '!help', description: 'список команд' },
+        { command: '!list', description: 'ваши задачи' },
+        { command: '!close N', description: 'закрыть задачу' },
+      ],
+    });
+  });
+
+  it('справка без строк команд остаётся обычным текстом', () => {
+    const mEvent = makeEnvelopeEvent(BOT_MXID, 'Помощь недоступна.', { v: 1, kind: 'help' });
 
     expect(parseBotMessage(mEvent, BOT_MXID)).toBeNull();
   });
