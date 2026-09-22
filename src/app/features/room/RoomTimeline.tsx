@@ -1720,7 +1720,6 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
 
     const collapseBotCommand =
       dsTaskBotSettings.collapseCommandsEnabled &&
-      !direct &&
       dsTaskBotSettings.botMxid !== '' &&
       eventSender !== undefined &&
       eventSender !== dsTaskBotSettings.botMxid &&
@@ -1728,7 +1727,6 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
 
     const collapseBotReply =
       dsTaskBotSettings.collapseCommandsEnabled &&
-      !direct &&
       dsTaskBotSettings.botMxid !== '' &&
       isBotServiceReply(mEvent, dsTaskBotSettings.botMxid);
 
