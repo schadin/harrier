@@ -5,12 +5,14 @@ export enum AutocompletePrefix {
   UserMention = '@',
   Emoticon = ':',
   Command = '/',
+  BotCommand = '!',
 }
 export const AUTOCOMPLETE_PREFIXES: readonly AutocompletePrefix[] = [
   AutocompletePrefix.RoomMention,
   AutocompletePrefix.UserMention,
   AutocompletePrefix.Emoticon,
   AutocompletePrefix.Command,
+  AutocompletePrefix.BotCommand,
 ];
 
 export type AutocompleteQuery<TPrefix extends string> = {

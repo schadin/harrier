@@ -7,7 +7,7 @@ import { SequenceCard } from '../../components/sequence-card';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
 import { timeDayMonYear, timeHourMinute } from '../../utils/time';
-import { DsTask, ParsedBotMessage, splitTasksByAssignee } from './parser';
+import { canCloseTask, DsTask, ParsedBotMessage, splitTasksByAssignee } from './parser';
 import { sendBotCommand } from './helpers';
 import { dsTaskBotLastTasksAtom } from '../../state/dsTaskBot';
 
@@ -135,12 +135,14 @@ function Section({
   title,
   tasks,
   scope,
+  myUserId,
   onClose,
   onFile,
 }: {
   title: string;
   tasks: DsTask[];
   scope?: string;
+  myUserId: string;
   onClose?: (task: DsTask) => void;
   onFile?: (task: DsTask) => void;
 }) {
@@ -159,7 +161,7 @@ function Section({
             key={`${task.id}-${task.title}`}
             task={task}
             scope={scope}
-            onClose={onClose && (() => onClose(task))}
+            onClose={onClose && canCloseTask(task, myUserId) ? () => onClose(task) : undefined}
             onFile={onFile && (() => onFile(task))}
           />
         ))
@@ -257,7 +259,7 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
               </Text>
             );
           })}
-          {task && task.status !== 'closed' && (
+          {task && task.status !== 'closed' && canCloseTask(task, myUserId) && (
             <Box>
               <Button
                 as="button"
@@ -285,7 +287,8 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
         label = t('DsTaskBot.TaskClosed', { defaultValue: 'Task closed' });
       }
 
-      const canAct = parsed.kind !== 'closed' && task.status !== 'closed';
+      const canFile = parsed.kind !== 'closed' && task.status !== 'closed';
+      const canClose = canFile && canCloseTask(task, myUserId);
 
       return (
         <CardShell>
@@ -295,8 +298,8 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
           </Box>
           <TaskRow
             task={task}
-            onClose={canAct ? () => sendClose(task.id) : undefined}
-            onFile={canAct ? () => sendFile(task.id) : undefined}
+            onClose={canClose ? () => sendClose(task.id) : undefined}
+            onFile={canFile ? () => sendFile(task.id) : undefined}
           />
         </CardShell>
       );
@@ -323,6 +326,7 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
             title={t('DsTaskBot.AssignedToMe', { defaultValue: 'Assigned to me' })}
             tasks={assignedToMe}
             scope={parsed.scope}
+            myUserId={myUserId}
             onClose={closeHandler}
             onFile={(task) => sendFile(task.id)}
           />
@@ -330,6 +334,7 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
             title={t('DsTaskBot.AssignedByMe', { defaultValue: 'Assigned by me' })}
             tasks={assignedByMe}
             scope={parsed.scope}
+            myUserId={myUserId}
             onClose={closeHandler}
             onFile={(task) => sendFile(task.id)}
           />
@@ -381,12 +386,14 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
       <Section
         title={t('DsTaskBot.AssignedToMe', { defaultValue: 'Assigned to me' })}
         tasks={assignedToMe}
+        myUserId={myUserId}
         onClose={(task) => sendClose(task.id)}
         onFile={(task) => sendFile(task.id)}
       />
       <Section
         title={t('DsTaskBot.AssignedByMe', { defaultValue: 'Assigned by me' })}
         tasks={assignedByMe}
+        myUserId={myUserId}
         onClose={(task) => sendClose(task.id)}
         onFile={(task) => sendFile(task.id)}
       />

@@ -151,6 +151,11 @@ export const parseBotMessage = (mEvent: MatrixEvent, botMxid: string): ParsedBot
   return parseTextMessage(body);
 };
 
+// Кнопку «Закрыть» показываем только для задач, созданных пользователем или
+// назначенных ему. В текстовом fallback author неизвестен — проверяем по assignee.
+export const canCloseTask = (task: DsTask, myUserId: string): boolean =>
+  task.author === myUserId || task.assignee === myUserId;
+
 export const splitTasksByAssignee = (
   tasks: DsTask[],
   myUserId: string

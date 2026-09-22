@@ -90,6 +90,8 @@ describe('isBotCommandText', () => {
     expect(isBotCommandText(`!history ${OTHER_MXID} 7`)).toBe(true);
     expect(isBotCommandText('!close 8')).toBe(true);
     expect(isBotCommandText('!file 8')).toBe(true);
+    expect(isBotCommandText('!add завтра 15:00 #срочно отчёт')).toBe(true);
+    expect(isBotCommandText(`!add ${OTHER_MXID} отчёт`)).toBe(true);
   });
 
   it('не распознаёт устаревший синтаксис и произвольный текст', () => {
@@ -116,6 +118,7 @@ describe('isBotCommandMessage', () => {
   it('распознаёт команду без упоминания (для сворачивания)', () => {
     expect(isBotCommandMessage(makeEvent(MY_MXID, '!list'), BOT_MXID)).toBe(true);
     expect(isBotCommandMessage(makeEvent(MY_MXID, '!file 8'), BOT_MXID)).toBe(true);
+    expect(isBotCommandMessage(makeEvent(MY_MXID, '!add завтра 15:00 отчёт'), BOT_MXID)).toBe(true);
   });
 
   it('не сворачивает создание задачи и произвольный текст', () => {

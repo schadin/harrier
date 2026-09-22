@@ -27,6 +27,14 @@
     "TaskFiles": "Файлы",
     "CloseTask": "Закрыть",
     "CloseIds": "закрыть",
+    "CmdHelp": "Список команд бота",
+    "CmdList": "Ваши задачи",
+    "CmdAll": "Задачи комнаты",
+    "CmdHistory": "История закрытых задач",
+    "CmdClose": "Закрыть задачу по номеру",
+    "CmdFile": "Вложения задачи по номеру",
+    "CmdVerify": "Проверка устройства бота",
+    "CmdAdd": "Создать задачу (в личке)",
     "CommandDescription": "Отправить команду DsTaskBot: !help | !list | !all | !history | !close N | !file N | !verify"
   },
   "DecryptionFailure": {

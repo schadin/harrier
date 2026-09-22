@@ -104,6 +104,7 @@ import {
 } from './msgContent';
 import { getMemberDisplayName, getMentionContent, trimReplyFromBody } from '../../utils/room';
 import { CommandAutocomplete } from './CommandAutocomplete';
+import { BotCommandAutocomplete } from '../ds-task-bot/BotCommandAutocomplete';
 import { Command, SHRUG, TABLEFLIP, UNFLIP, useCommands } from '../../hooks/useCommands';
 import { mobileOrTablet } from '../../utils/user-agent';
 import { useElementSizeObserver } from '../../hooks/useElementSizeObserver';
@@ -544,6 +545,14 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         )}
         {autocompleteQuery?.prefix === AutocompletePrefix.Command && (
           <CommandAutocomplete
+            room={room}
+            editor={editor}
+            query={autocompleteQuery}
+            requestClose={handleCloseAutocomplete}
+          />
+        )}
+        {autocompleteQuery?.prefix === AutocompletePrefix.BotCommand && (
+          <BotCommandAutocomplete
             room={room}
             editor={editor}
             query={autocompleteQuery}

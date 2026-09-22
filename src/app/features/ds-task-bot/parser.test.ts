@@ -1,6 +1,7 @@
 import { MatrixEvent } from 'matrix-js-sdk';
 import { describe, expect, it } from 'vitest';
 import {
+  canCloseTask,
   parseBotMessage,
   parseNotice,
   parseTaskClosed,
@@ -319,6 +320,42 @@ describe('parseBotMessage с конвертом ru.ds_core.bot', () => {
       kind: 'notice',
       text: '🥳 Назначенных вам задач нет!',
     });
+  });
+});
+
+describe('canCloseTask', () => {
+  it('разрешает закрытие задачи, созданной мной', () => {
+    expect(
+      canCloseTask(
+        { id: 1, title: 'Задача', author: MY_MXID, assignee: '@other:ds-core.ru' },
+        MY_MXID
+      )
+    ).toBe(true);
+  });
+
+  it('разрешает закрытие задачи, назначенной мне', () => {
+    expect(
+      canCloseTask(
+        { id: 1, title: 'Задача', author: '@other:ds-core.ru', assignee: MY_MXID },
+        MY_MXID
+      )
+    ).toBe(true);
+  });
+
+  it('запрещает закрытие чужой задачи', () => {
+    expect(
+      canCloseTask(
+        { id: 1, title: 'Задача', author: '@other:ds-core.ru', assignee: '@third:ds-core.ru' },
+        MY_MXID
+      )
+    ).toBe(false);
+  });
+
+  it('в текстовом fallback без author проверяет только assignee', () => {
+    expect(canCloseTask({ id: 1, title: 'Задача', assignee: MY_MXID }, MY_MXID)).toBe(true);
+    expect(canCloseTask({ id: 1, title: 'Задача', assignee: '@other:ds-core.ru' }, MY_MXID)).toBe(
+      false
+    );
   });
 });
 

@@ -153,6 +153,7 @@ export const isBotCommandText = (text: string): boolean => {
   if (SUBCOMMANDS_WITH_FILTER.includes(name)) return true;
   if (SUBCOMMANDS_WITH_ID.includes(name)) return args !== undefined && /^\d+$/.test(args);
   if (name === 'history') return true;
+  if (name === 'add') return true;
   return false;
 };
 

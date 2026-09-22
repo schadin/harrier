@@ -32,6 +32,14 @@
     "TaskFiles": "Files",
     "CloseTask": "Close",
     "CloseIds": "close",
+    "CmdHelp": "List bot commands",
+    "CmdList": "Your tasks",
+    "CmdAll": "Room tasks",
+    "CmdHistory": "Closed task history",
+    "CmdClose": "Close task by number",
+    "CmdFile": "Task files by number",
+    "CmdVerify": "Request bot device verification",
+    "CmdAdd": "Create task (in direct chat)",
     "CommandDescription": "Send command to DsTaskBot: !help | !list | !all | !history | !close N | !file N | !verify"
   },
   "DecryptionFailure": {
