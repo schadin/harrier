@@ -1,3 +1,4 @@
+import type { BotCommandAction } from './helpers';
 import type { DsTask } from './parser';
 
 export type BotCommandName =
@@ -32,6 +33,53 @@ export const BOT_COMMANDS: readonly {
   { name: 'verify', needsArg: false },
   { name: 'add', needsArg: true, dmOnly: true },
 ];
+
+// Единственный источник подписей команд: используется и автодополнением `!`,
+// и slash-шорткатами `/dstask_<команда>`.
+export const BOT_COMMAND_I18N: Record<BotCommandName, { key: string; defaultValue: string }> = {
+  help: { key: 'DsTaskBot.CmdHelp', defaultValue: 'List bot commands' },
+  list: { key: 'DsTaskBot.CmdList', defaultValue: 'Your tasks' },
+  all: { key: 'DsTaskBot.CmdAll', defaultValue: 'Room tasks' },
+  history: { key: 'DsTaskBot.CmdHistory', defaultValue: 'Closed task history' },
+  close: { key: 'DsTaskBot.CmdClose', defaultValue: 'Close task by number' },
+  file: { key: 'DsTaskBot.CmdFile', defaultValue: 'Task files by number' },
+  verify: { key: 'DsTaskBot.CmdVerify', defaultValue: 'Request bot device verification' },
+  add: { key: 'DsTaskBot.CmdAdd', defaultValue: 'Create task (in direct chat)' },
+};
+
+const BOT_COMMAND_ACTIONS: Record<BotCommandName, BotCommandAction> = {
+  help: 'help',
+  list: 'list',
+  all: 'all',
+  history: 'history',
+  close: 'close',
+  file: 'file',
+  verify: 'verify',
+  add: 'create',
+};
+
+export const DSTASK_SLASH_PREFIX = 'dstask_';
+
+export const getDsTaskSlashCommandName = (name: BotCommandName): string =>
+  `${DSTASK_SLASH_PREFIX}${name}`;
+
+export type DsTaskSlashCommand = {
+  name: string;
+  action: BotCommandAction;
+  dmOnly: boolean;
+  i18n: { key: string; defaultValue: string };
+};
+
+// Набор отдельных slash-шорткатов-помощников `/dstask_<команда>` формируется из
+// общего дескриптора команд бота, чтобы не расходиться с автодополнением `!`.
+export const DSTASK_SLASH_COMMANDS: readonly DsTaskSlashCommand[] = BOT_COMMANDS.map(
+  ({ name, dmOnly }) => ({
+    name: getDsTaskSlashCommandName(name),
+    action: BOT_COMMAND_ACTIONS[name],
+    dmOnly: dmOnly === true,
+    i18n: BOT_COMMAND_I18N[name],
+  })
+);
 
 const NUMERIC_COMMANDS: readonly ('close' | 'file')[] = ['close', 'file'];
 export const MAX_TASK_SUGGESTIONS = 5;

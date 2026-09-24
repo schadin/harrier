@@ -1,9 +1,10 @@
-import { MatrixEvent } from 'matrix-js-sdk';
+import { MatrixEvent, Room } from 'matrix-js-sdk';
 import { describe, expect, it } from 'vitest';
 import {
   buildBotCommand,
   isBotCommandMessage,
   isBotCommandText,
+  isBotInRoom,
   isBotServiceReply,
   isCollapseAllowed,
   parseDsTaskPayload,
@@ -318,5 +319,26 @@ describe('isCollapseAllowed', () => {
 
   it('в личке не с ботом запрещает сворачивание', () => {
     expect(isCollapseAllowed(true, false)).toBe(false);
+  });
+});
+
+describe('isBotInRoom', () => {
+  const makeRoom = (membership?: string): Room =>
+    ({
+      getMember: () => (membership === undefined ? undefined : { membership }),
+    } as unknown as Room);
+
+  it('истинно, когда бот состоит в комнате', () => {
+    expect(isBotInRoom(makeRoom('join'), BOT_MXID)).toBe(true);
+  });
+
+  it('ложно для приглашённого, вышедшего и отсутствующего бота', () => {
+    expect(isBotInRoom(makeRoom('invite'), BOT_MXID)).toBe(false);
+    expect(isBotInRoom(makeRoom('leave'), BOT_MXID)).toBe(false);
+    expect(isBotInRoom(makeRoom(undefined), BOT_MXID)).toBe(false);
+  });
+
+  it('ложно без MXID бота', () => {
+    expect(isBotInRoom(makeRoom('join'), '')).toBe(false);
   });
 });

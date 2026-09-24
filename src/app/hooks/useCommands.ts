@@ -31,10 +31,12 @@ import { splitWithSpace } from '../utils/common';
 import { createRoomEncryptionState } from '../components/create-room';
 import { dsTaskBotLastTasksAtom, useDsTaskBotSettings } from '../state/dsTaskBot';
 import {
+  isBotInRoom,
   isDirectRoomWithBot,
   parseDsTaskPayload,
   sendBotCommand,
 } from '../features/ds-task-bot/helpers';
+import { DSTASK_SLASH_COMMANDS } from '../features/ds-task-bot/botCommandSuggestions';
 
 export const SHRUG = '¯\\_(ツ)_/¯';
 export const TABLEFLIP = '(╯°□°)╯︵ ┻━┻';
@@ -176,13 +178,20 @@ export type CommandContent = {
   exe: CommandExe;
 };
 
-export type CommandRecord = Partial<Record<Command, CommandContent>>;
+export type CommandRecord = Partial<Record<Command, CommandContent>> & {
+  [commandName: string]: CommandContent | undefined;
+};
 
 export const useCommands = (mx: MatrixClient, room: Room): CommandRecord => {
   const { navigateRoom } = useRoomNavigate();
   const { t } = useTranslation();
   const dsTaskBotSettings = useDsTaskBotSettings();
-  const dsTaskBotEnabled = dsTaskBotSettings.helpersEnabled && dsTaskBotSettings.botMxid !== '';
+  // Помощники команд доступны только в комнатах, где бот из настройки состоит
+  // участником (`join`): без бота упоминание невозможно, а шорткаты бессмысленны.
+  const dsTaskBotEnabled =
+    dsTaskBotSettings.helpersEnabled &&
+    dsTaskBotSettings.botMxid !== '' &&
+    isBotInRoom(room, dsTaskBotSettings.botMxid);
   const dsTaskBotDm = isDirectRoomWithBot(room, dsTaskBotSettings.botMxid);
   const dsTaskBotLastTasks = useAtomValue(dsTaskBotLastTasksAtom)[room.roomId] ?? [];
   const dsTaskBotCloseIds = dsTaskBotLastTasks
@@ -576,6 +585,27 @@ export const useCommands = (mx: MatrixClient, room: Room): CommandRecord => {
                 );
               },
             },
+            ...Object.fromEntries(
+              DSTASK_SLASH_COMMANDS.filter((command) => !command.dmOnly || dsTaskBotDm).map(
+                ({ name, action, i18n }) => {
+                  const content: CommandContent = {
+                    name,
+                    description: t(i18n.key, { defaultValue: i18n.defaultValue }),
+                    exe: async (payload) => {
+                      await sendBotCommand(
+                        mx,
+                        room.roomId,
+                        dsTaskBotSettings.botMxid,
+                        dsTaskBotDm,
+                        action,
+                        payload
+                      );
+                    },
+                  };
+                  return [name, content];
+                }
+              )
+            ),
           }
         : {}),
     }),

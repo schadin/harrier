@@ -10,6 +10,9 @@ import { onTabPress } from '../../utils/keyboard';
 import { dsTaskBotLastTasksAtom, useDsTaskBotSettings } from '../../state/dsTaskBot';
 import type { DsTask } from './parser';
 import {
+  BOT_COMMANDS,
+  BOT_COMMAND_I18N,
+  BotCommandName,
   BotCommandSuggestion,
   buildBotCommandSuggestions,
   filterBotCommandSuggestions,
@@ -46,22 +49,20 @@ export function BotCommandAutocomplete({
   const allowed =
     enabled && (dm || query.viaSlash === true || hasBotMention(editor, settings.botMxid));
 
+  const descriptions = Object.fromEntries(
+    BOT_COMMANDS.map(({ name }) => [
+      name,
+      t(BOT_COMMAND_I18N[name].key, { defaultValue: BOT_COMMAND_I18N[name].defaultValue }),
+    ])
+  ) as Partial<Record<BotCommandName, string>>;
+
   const suggestions = allowed
     ? filterBotCommandSuggestions(
         buildBotCommandSuggestions({
           text: query.text,
           dm,
           lastTasks,
-          descriptions: {
-            help: t('DsTaskBot.CmdHelp', { defaultValue: 'List bot commands' }),
-            list: t('DsTaskBot.CmdList', { defaultValue: 'Your tasks' }),
-            all: t('DsTaskBot.CmdAll', { defaultValue: 'Room tasks' }),
-            history: t('DsTaskBot.CmdHistory', { defaultValue: 'Closed task history' }),
-            close: t('DsTaskBot.CmdClose', { defaultValue: 'Close task by number' }),
-            file: t('DsTaskBot.CmdFile', { defaultValue: 'Task files by number' }),
-            verify: t('DsTaskBot.CmdVerify', { defaultValue: 'Request bot device verification' }),
-            add: t('DsTaskBot.CmdAdd', { defaultValue: 'Create task (in direct chat)' }),
-          },
+          descriptions,
         }),
         query.text
       )

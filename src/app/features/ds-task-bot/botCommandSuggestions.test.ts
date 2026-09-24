@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DsTask } from './parser';
 import {
+  DSTASK_SLASH_COMMANDS,
   MAX_TASK_SUGGESTIONS,
   buildBotCommandSuggestions,
   filterBotCommandSuggestions,
@@ -118,5 +119,38 @@ describe('filterBotCommandSuggestions', () => {
     const filtered = filterBotCommandSuggestions(build('', false), 'HE').map((s) => s.label);
 
     expect(filtered).toEqual(['!help']);
+  });
+});
+
+describe('DSTASK_SLASH_COMMANDS', () => {
+  it('формирует шорткат-помощник для каждой команды', () => {
+    expect(DSTASK_SLASH_COMMANDS.map((command) => command.name)).toEqual([
+      'dstask_help',
+      'dstask_list',
+      'dstask_all',
+      'dstask_history',
+      'dstask_close',
+      'dstask_file',
+      'dstask_verify',
+      'dstask_add',
+    ]);
+  });
+
+  it('помечает add доступным только в личке', () => {
+    const dmOnly = DSTASK_SLASH_COMMANDS.filter((command) => command.dmOnly).map(
+      (command) => command.name
+    );
+
+    expect(dmOnly).toEqual(['dstask_add']);
+  });
+
+  it('маппит add на действие create, остальные — на одноимённые действия', () => {
+    const byName = Object.fromEntries(
+      DSTASK_SLASH_COMMANDS.map((command) => [command.name, command.action])
+    );
+
+    expect(byName.dstask_add).toBe('create');
+    expect(byName.dstask_list).toBe('list');
+    expect(byName.dstask_verify).toBe('verify');
   });
 });

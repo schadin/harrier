@@ -54,6 +54,14 @@ export const isDirectRoomWithBot = (room: Room, botMxid: string): boolean => {
   return joined.length === 2 && joined.some((member) => member.userId === botMxid);
 };
 
+// Бот считается присутствующим, только если реально состоит в комнате (`join`):
+// приглашённый бот команд не получает. Помощники команд доступны лишь в таких
+// комнатах.
+export const isBotInRoom = (room: Room, botMxid: string): boolean => {
+  if (!botMxid) return false;
+  return room.getMember(botMxid)?.membership === 'join';
+};
+
 // В личках сворачиваем служебные сообщения только в переписке с ботом; в обычных
 // комнатах — всегда (при включённой настройке).
 export const isCollapseAllowed = (direct: boolean, dmWithBot: boolean): boolean =>
