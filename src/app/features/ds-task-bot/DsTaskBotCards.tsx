@@ -9,7 +9,8 @@ import { settingsAtom } from '../../state/settings';
 import { timeDayMonYear, timeHourMinute } from '../../utils/time';
 import { canCloseTask, DsTask, ParsedBotMessage, splitTasksByAssignee } from './parser';
 import { sendBotCommand } from './helpers';
-import { dsTaskBotLastTasksAtom } from '../../state/dsTaskBot';
+import { cardFontFactor } from './cardFont';
+import { dsTaskBotLastTasksAtom, useDsTaskBotSettings } from '../../state/dsTaskBot';
 
 type DsTaskBotCardsProps = {
   parsed: ParsedBotMessage;
@@ -43,6 +44,39 @@ const formatFileSize = (size?: number): string | undefined => {
   return `${Math.round(value * 10) / 10} ${units[unitIndex]}`;
 };
 
+type TextProps = React.ComponentProps<typeof Text>;
+
+type CardTextProps = {
+  size?: TextProps['size'];
+  priority?: TextProps['priority'];
+  truncate?: boolean;
+  style?: React.CSSProperties;
+  children?: React.ReactNode;
+};
+
+// Текст карточки с учётом настройки размера: масштабируются только размер
+// шрифта и высота строки, отступы и иконки остаются неизменными. При 100% стиль
+// не задаётся — вид совпадает с обычным текстом folds.
+function CardText({ size = 'T200', priority, truncate, style, children }: CardTextProps) {
+  const settings = useDsTaskBotSettings();
+  const factor = cardFontFactor(settings.cardFontScale);
+  const fontSize = config.fontSize[size as keyof typeof config.fontSize];
+  const lineHeight = config.lineHeight[size as keyof typeof config.lineHeight];
+  const scaledStyle =
+    factor === 1 || !fontSize
+      ? undefined
+      : {
+          fontSize: `calc(${fontSize} * ${factor})`,
+          lineHeight: lineHeight ? `calc(${lineHeight} * ${factor})` : undefined,
+        };
+
+  return (
+    <Text size={size} priority={priority} truncate={truncate} style={{ ...scaledStyle, ...style }}>
+      {children}
+    </Text>
+  );
+}
+
 function CardShell({ children }: { children: React.ReactNode }) {
   return (
     <SequenceCard variant="SurfaceVariant" radii="500">
@@ -71,19 +105,19 @@ function TaskMeta({ task, scope }: { task: DsTask; scope?: string }) {
   return (
     <Box direction="Column" gap="100">
       {parts.length > 0 && (
-        <Text size="T200" priority="300" truncate>
+        <CardText size="T200" priority="300" truncate>
           {parts.join(' · ')}
-        </Text>
+        </CardText>
       )}
       {tags.length > 0 && (
-        <Text size="T200" priority="300" truncate>
+        <CardText size="T200" priority="300" truncate>
           {tags.map((tag) => `#${tag}`).join(' ')}
-        </Text>
+        </CardText>
       )}
       {scope === 'personal' && task.chatTitle && (
-        <Text size="T200" priority="300" truncate>
+        <CardText size="T200" priority="300" truncate>
           {task.chatTitle}
-        </Text>
+        </CardText>
       )}
     </Box>
   );
@@ -105,14 +139,14 @@ function TaskRow({
   return (
     <Box grow="Yes" alignItems="Center" gap="200">
       <Box grow="Yes" direction="Column" gap="100">
-        <Text size="T300" truncate>
+        <CardText size="T300" truncate>
           {task.id} {task.title}
-        </Text>
+        </CardText>
         <TaskMeta task={task} scope={scope} />
       </Box>
       {onFile && (
         <Button as="button" size="300" variant="Secondary" fill="None" radii="400" onClick={onFile}>
-          <Text size="T200">{t('DsTaskBot.TaskFiles', { defaultValue: 'Files' })}</Text>
+          <CardText size="T200">{t('DsTaskBot.TaskFiles', { defaultValue: 'Files' })}</CardText>
         </Button>
       )}
       {onClose && (
@@ -124,7 +158,7 @@ function TaskRow({
           radii="400"
           onClick={onClose}
         >
-          <Text size="T200">{t('DsTaskBot.CloseTask', { defaultValue: 'Close' })}</Text>
+          <CardText size="T200">{t('DsTaskBot.CloseTask', { defaultValue: 'Close' })}</CardText>
         </Button>
       )}
     </Box>
@@ -148,13 +182,13 @@ function Section({
 }) {
   return (
     <Box direction="Column" gap="100">
-      <Text size="T200" priority="400">
+      <CardText size="T200" priority="400">
         {title}
-      </Text>
+      </CardText>
       {tasks.length === 0 ? (
-        <Text size="T200" priority="300">
+        <CardText size="T200" priority="300">
           —
-        </Text>
+        </CardText>
       ) : (
         tasks.map((task) => (
           <TaskRow
@@ -176,13 +210,13 @@ function NoticeCard({ tone, text, task }: { tone: 'info' | 'error'; text: string
       <Box alignItems="Center" gap="200">
         <Icon size="100" src={tone === 'error' ? Icons.Warning : Icons.Info} />
         <Box grow="Yes" direction="Column" gap="100">
-          <Text size="T200" priority="300">
+          <CardText size="T200" priority="300">
             {text}
-          </Text>
+          </CardText>
           {task && (
-            <Text size="T200" priority="400" truncate>
+            <CardText size="T200" priority="400" truncate>
               {task.id} {task.title}
-            </Text>
+            </CardText>
           )}
         </Box>
       </Box>
@@ -235,17 +269,19 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
         <CardShell>
           <Box alignItems="Center" gap="200">
             <Icon size="100" src={Icons.Bulb} />
-            <Text size="T300">{t('DsTaskBot.HelpTitle', { defaultValue: 'Bot commands' })}</Text>
+            <CardText size="T300">
+              {t('DsTaskBot.HelpTitle', { defaultValue: 'Bot commands' })}
+            </CardText>
           </Box>
           {parsed.entries.map((entry) => (
             <Box key={entry.command} direction="Column" gap="100">
-              <Text size="T200" priority="400">
+              <CardText size="T200" priority="400">
                 {entry.command}
-              </Text>
+              </CardText>
               {entry.description && (
-                <Text size="T200" priority="300">
+                <CardText size="T200" priority="300">
                   {entry.description}
-                </Text>
+                </CardText>
               )}
             </Box>
           ))}
@@ -259,27 +295,27 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
         <CardShell>
           <Box alignItems="Center" gap="200">
             <Icon size="100" src={Icons.Attachment} />
-            <Text size="T300">
+            <CardText size="T300">
               {parsed.kind === 'file'
                 ? t('DsTaskBot.FileSent', { defaultValue: 'Task file' })
                 : t('DsTaskBot.FileAttached', { defaultValue: 'File attached to task' })}
-            </Text>
+            </CardText>
           </Box>
           {task && (
             <>
-              <Text size="T200" priority="300" truncate>
+              <CardText size="T200" priority="300" truncate>
                 {task.id} {task.title}
-              </Text>
+              </CardText>
               <TaskMeta task={task} />
             </>
           )}
           {files.map((file) => {
             const size = formatFileSize(file.size);
             return (
-              <Text key={file.name} size="T200" priority="300" truncate>
+              <CardText key={file.name} size="T200" priority="300" truncate>
                 {file.name}
                 {size ? ` · ${size}` : ''}
-              </Text>
+              </CardText>
             );
           })}
           {task && task.status !== 'closed' && canCloseTask(task, myUserId) && (
@@ -292,7 +328,9 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
                 radii="400"
                 onClick={() => sendClose(task.id)}
               >
-                <Text size="T200">{t('DsTaskBot.CloseTask', { defaultValue: 'Close' })}</Text>
+                <CardText size="T200">
+                  {t('DsTaskBot.CloseTask', { defaultValue: 'Close' })}
+                </CardText>
               </Button>
             </Box>
           )}
@@ -317,7 +355,7 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
         <CardShell>
           <Box alignItems="Center" gap="200">
             <Icon size="100" src={icon} />
-            <Text size="T300">{label}</Text>
+            <CardText size="T300">{label}</CardText>
           </Box>
           <TaskRow
             task={task}
@@ -341,10 +379,10 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
 
       return (
         <CardShell>
-          <Text size="T300">
+          <CardText size="T300">
             {title}
             {parsed.filterTag ? ` #${parsed.filterTag}` : ''}
-          </Text>
+          </CardText>
           <Section
             title={t('DsTaskBot.AssignedToMe', { defaultValue: 'Assigned to me' })}
             tasks={assignedToMe}
@@ -374,11 +412,13 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
       <CardShell>
         <Box alignItems="Center" gap="200">
           <Icon size="100" src={Icons.Check} />
-          <Text size="T300">{t('DsTaskBot.TaskCreated', { defaultValue: 'Task created' })}</Text>
+          <CardText size="T300">
+            {t('DsTaskBot.TaskCreated', { defaultValue: 'Task created' })}
+          </CardText>
         </Box>
-        <Text size="T200" priority="300" truncate>
+        <CardText size="T200" priority="300" truncate>
           {title} → {assignee}
-        </Text>
+        </CardText>
       </CardShell>
     );
   }
@@ -388,11 +428,13 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
       <CardShell>
         <Box alignItems="Center" gap="200">
           <Icon size="100" src={Icons.Check} />
-          <Text size="T300">{t('DsTaskBot.TaskClosed', { defaultValue: 'Task closed' })}</Text>
+          <CardText size="T300">
+            {t('DsTaskBot.TaskClosed', { defaultValue: 'Task closed' })}
+          </CardText>
         </Box>
-        <Text size="T200" priority="300" truncate>
+        <CardText size="T200" priority="300" truncate>
           {parsed.task.title}
-        </Text>
+        </CardText>
       </CardShell>
     );
   }
@@ -405,7 +447,7 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
   const { assignedToMe, assignedByMe } = splitTasksByAssignee(parsed.tasks, myUserId);
   return (
     <CardShell>
-      <Text size="T300">{t('DsTaskBot.Tasks', { defaultValue: 'Tasks' })}</Text>
+      <CardText size="T300">{t('DsTaskBot.Tasks', { defaultValue: 'Tasks' })}</CardText>
       <Section
         title={t('DsTaskBot.AssignedToMe', { defaultValue: 'Assigned to me' })}
         tasks={assignedToMe}

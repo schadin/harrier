@@ -41,7 +41,9 @@
     "CmdFile": "Task files by number",
     "CmdVerify": "Request bot device verification",
     "CmdAdd": "Create task (in direct chat)",
-    "CommandDescription": "Send command to DsTaskBot: !help | !list | !all | !history | !close N | !file N | !verify"
+    "CommandDescription": "Send command to DsTaskBot: !help | !list | !all | !history | !close N | !file N | !verify",
+    "CardFontScale": "Card text size",
+    "CardFontScaleDescription": "Scale of text inside DsTaskBot cards, in percent (100% by default)."
   },
   "DecryptionFailure": {
     "Action": {

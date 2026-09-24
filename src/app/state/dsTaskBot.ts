@@ -14,6 +14,7 @@ export type DsTaskBotSettings = {
   helpersEnabled: boolean;
   cardsEnabled: boolean;
   collapseCommandsEnabled: boolean;
+  cardFontScale: number;
 };
 
 export const DEFAULT_DS_TASK_BOT_SETTINGS: DsTaskBotSettings = {
@@ -21,6 +22,7 @@ export const DEFAULT_DS_TASK_BOT_SETTINGS: DsTaskBotSettings = {
   helpersEnabled: false,
   cardsEnabled: false,
   collapseCommandsEnabled: false,
+  cardFontScale: 100,
 };
 
 const DS_TASK_BOT_SETTINGS = 'dsTaskBotSettings';

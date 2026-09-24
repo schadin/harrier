@@ -1,15 +1,87 @@
-import React, { ChangeEventHandler, FormEventHandler, useEffect, useState } from 'react';
+import React, {
+  ChangeEventHandler,
+  FormEventHandler,
+  KeyboardEventHandler,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Button, Icon, IconButton, Icons, Input, Scroll, Switch, Text, config } from 'folds';
+import {
+  Box,
+  Button,
+  Icon,
+  IconButton,
+  Icons,
+  Input,
+  Scroll,
+  Switch,
+  Text,
+  config,
+  toRem,
+} from 'folds';
+import { isKeyHotkey } from 'is-hotkey';
 import { Page, PageContent, PageHeader } from '../../../components/page';
 import { SequenceCard } from '../../../components/sequence-card';
 import { SequenceCardStyle } from '../styles.css';
 import { SettingTile } from '../../../components/setting-tile';
 import { useDsTaskBotSettings, useSetDsTaskBotSettings } from '../../../state/dsTaskBot';
+import {
+  CARD_FONT_SCALE_MAX,
+  CARD_FONT_SCALE_MIN,
+  clampCardFontScale,
+} from '../../ds-task-bot/cardFont';
 
 type DsTaskBotProps = {
   requestClose: () => void;
 };
+
+function CardFontScaleInput() {
+  const settings = useDsTaskBotSettings();
+  const updateSettings = useSetDsTaskBotSettings();
+  const [current, setCurrent] = useState(`${settings.cardFontScale}`);
+
+  useEffect(() => {
+    setCurrent(`${settings.cardFontScale}`);
+  }, [settings.cardFontScale]);
+
+  const handleChange: ChangeEventHandler<HTMLInputElement> = (evt) => {
+    setCurrent(evt.currentTarget.value);
+  };
+
+  const handleKeyDown: KeyboardEventHandler<HTMLInputElement> = (evt) => {
+    if (isKeyHotkey('escape', evt)) {
+      evt.stopPropagation();
+      setCurrent(`${settings.cardFontScale}`);
+      return;
+    }
+    if (
+      isKeyHotkey('enter', evt) &&
+      'value' in evt.target &&
+      typeof evt.target.value === 'string'
+    ) {
+      const clamped = clampCardFontScale(parseInt(evt.target.value, 10));
+      updateSettings({ cardFontScale: clamped });
+      setCurrent(`${clamped}`);
+    }
+  };
+
+  return (
+    <Input
+      style={{ width: toRem(100) }}
+      variant={settings.cardFontScale === parseInt(current, 10) ? 'Secondary' : 'Success'}
+      size="300"
+      radii="300"
+      type="number"
+      min={CARD_FONT_SCALE_MIN}
+      max={CARD_FONT_SCALE_MAX}
+      value={current}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      after={<Text size="T300">%</Text>}
+      outlined
+    />
+  );
+}
 
 export function DsTaskBot({ requestClose }: DsTaskBotProps) {
   const { t } = useTranslation();
@@ -127,6 +199,15 @@ export function DsTaskBot({ requestClose }: DsTaskBotProps) {
                       value={settings.cardsEnabled}
                       onChange={toggle('cardsEnabled')}
                     />
+                  </SettingTile>
+                  <SettingTile
+                    title={t('DsTaskBot.CardFontScale', { defaultValue: 'Card text size' })}
+                    description={t('DsTaskBot.CardFontScaleDescription', {
+                      defaultValue:
+                        'Scale of text inside DsTaskBot cards, in percent (100% by default).',
+                    })}
+                  >
+                    <CardFontScaleInput />
                   </SettingTile>
                   <SettingTile
                     title={t('DsTaskBot.CollapseCommands', {
