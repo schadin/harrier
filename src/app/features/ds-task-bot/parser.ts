@@ -38,6 +38,7 @@ export type ParsedBotMessage =
   | { origin: 'envelope'; kind: 'file' | 'file_attached'; task?: DsTask; files: DsFile[] }
   | { origin: 'envelope'; kind: 'notice'; tone: 'info' | 'error'; text: string; task?: DsTask }
   | { origin: 'envelope'; kind: 'help'; entries: DsHelpEntry[] }
+  | { origin: 'text'; kind: 'help'; entries: DsHelpEntry[] }
   | { origin: 'text'; kind: 'tasks'; tasks: DsTask[] }
   | { origin: 'text'; kind: 'task_created'; task: DsTaskCreated }
   | { origin: 'text'; kind: 'task_closed'; task: DsTaskClosed }
@@ -92,6 +93,31 @@ export const parseHelpEntries = (body: string): DsHelpEntry[] =>
     return [];
   });
 
+// Маркер текстовой справки без конверта: бот отвечает ей на нераспознанную
+// команду или упоминание без команды.
+const TEXT_HELP_MARKER_PATTERN = /Команда не распознана|обрабатывает следующие команды/i;
+
+// Префикс строки справки: декоративные маркеры (🎈, 🔔, •) и/или упоминание
+// бота перед `!команда` — «🎈 @dstaskbot:ds-core.ru !help - …».
+const HELP_LINE_PREFIX_PATTERN = /^(?:[🎈🔔•*]\s*)?(?:@\S+\s+)?/u;
+
+// Текстовая справка: строки вида «[🎈] [@бот] !команда [арг] — описание».
+// Распознаётся по маркеру либо по наличию хотя бы двух строк команд.
+export const parseTextHelpEntries = (body: string): DsHelpEntry[] | null => {
+  const entries = body.split('\n').flatMap((line) => {
+    const text = line.trim().replace(HELP_LINE_PREFIX_PATTERN, '');
+    if (!text.startsWith('!')) return [];
+    const match = HELP_LINE_PATTERN.exec(text);
+    if (match) return [{ command: match[1], description: match[2].trim() }];
+    if (HELP_COMMAND_PATTERN.test(text)) return [{ command: text }];
+    return [];
+  });
+
+  if (entries.length === 0) return null;
+  if (entries.length >= 2 || TEXT_HELP_MARKER_PATTERN.test(body)) return entries;
+  return null;
+};
+
 export const parseTextMessage = (body: string): ParsedBotMessage | null => {
   const tasks = parseTaskLines(body);
   if (tasks.length > 0) return { origin: 'text', kind: 'tasks', tasks };
@@ -101,6 +127,9 @@ export const parseTextMessage = (body: string): ParsedBotMessage | null => {
 
   const closed = parseTaskClosed(body);
   if (closed) return { origin: 'text', kind: 'task_closed', task: closed };
+
+  const helpEntries = parseTextHelpEntries(body);
+  if (helpEntries) return { origin: 'text', kind: 'help', entries: helpEntries };
 
   const notice = parseNotice(body);
   if (notice) return { origin: 'text', kind: 'notice', text: notice.text };

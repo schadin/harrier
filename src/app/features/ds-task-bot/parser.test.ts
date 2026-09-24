@@ -237,6 +237,44 @@ describe('parseBotMessage', () => {
     });
   });
 
+  it('ответ на упоминание без команды распознаёт как текстовую справку', () => {
+    const body = [
+      'Команда не распознана. В данный момент бот обрабатывает следующие команды:',
+      '🔔 В комнате (сначала упоминание бота, затем команда):',
+      '🎈 @dstaskbot:ds-core.ru !help - выдаст список команд',
+      '🎈 @dstaskbot:ds-core.ru !list - выдаст список ваших задач',
+      '🎈 @dstaskbot:ds-core.ru !close 8 - закроет задачу №8',
+      '🔔 В личных сообщениях (упоминание бота необязательно):',
+      '🎈 !help - выдаст список команд',
+      '🎈 !add текст - личная задача на себя; !add @пользователь текст - задача пользователю',
+      '🎈 !verify - запросить проверку устройства бота',
+      '🎈 Срок в начале текста: «завтра 15:00», «через 2 ч»; теги: #срочно',
+    ].join('\n');
+    const mEvent = makeEvent(BOT_MXID, body);
+
+    expect(parseBotMessage(mEvent, BOT_MXID)).toEqual({
+      origin: 'text',
+      kind: 'help',
+      entries: [
+        { command: '!help', description: 'выдаст список команд' },
+        { command: '!list', description: 'выдаст список ваших задач' },
+        { command: '!close 8', description: 'закроет задачу №8' },
+        { command: '!help', description: 'выдаст список команд' },
+        {
+          command: '!add текст',
+          description: 'личная задача на себя; !add @пользователь текст - задача пользователю',
+        },
+        { command: '!verify', description: 'запросить проверку устройства бота' },
+      ],
+    });
+  });
+
+  it('одиночную строку команды без маркера справкой не считает', () => {
+    const mEvent = makeEvent(BOT_MXID, '!help - выдаст список команд');
+
+    expect(parseBotMessage(mEvent, BOT_MXID)).toBeNull();
+  });
+
   it('не распознаёт не-сообщения', () => {
     const mEvent = new MatrixEvent({
       type: 'm.room.encrypted',

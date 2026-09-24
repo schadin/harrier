@@ -7,7 +7,7 @@ import { SequenceCard } from '../../components/sequence-card';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
 import { timeDayMonYear, timeHourMinute } from '../../utils/time';
-import { canCloseTask, DsTask, ParsedBotMessage, splitTasksByAssignee } from './parser';
+import { canCloseTask, DsHelpEntry, DsTask, ParsedBotMessage, splitTasksByAssignee } from './parser';
 import { sendBotCommand } from './helpers';
 import { cardFontFactor } from './cardFont';
 import { dsTaskBotLastTasksAtom, useDsTaskBotSettings } from '../../state/dsTaskBot';
@@ -74,6 +74,32 @@ function CardText({ size = 'T200', priority, truncate, style, children }: CardTe
     <Text size={size} priority={priority} truncate={truncate} style={{ ...scaledStyle, ...style }}>
       {children}
     </Text>
+  );
+}
+
+function HelpCard({ entries }: { entries: DsHelpEntry[] }) {
+  const { t } = useTranslation();
+  return (
+    <CardShell>
+      <Box alignItems="Center" gap="200">
+        <Icon size="100" src={Icons.Bulb} />
+        <CardText size="T300">
+          {t('DsTaskBot.HelpTitle', { defaultValue: 'Bot commands' })}
+        </CardText>
+      </Box>
+      {entries.map((entry) => (
+        <Box key={`${entry.command}-${entry.description ?? ''}`} direction="Column" gap="100">
+          <CardText size="T200" priority="400">
+            {entry.command}
+          </CardText>
+          {entry.description && (
+            <CardText size="T200" priority="300">
+              {entry.description}
+            </CardText>
+          )}
+        </Box>
+      ))}
+    </CardShell>
   );
 }
 
@@ -265,28 +291,7 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
     }
 
     if (parsed.kind === 'help') {
-      return (
-        <CardShell>
-          <Box alignItems="Center" gap="200">
-            <Icon size="100" src={Icons.Bulb} />
-            <CardText size="T300">
-              {t('DsTaskBot.HelpTitle', { defaultValue: 'Bot commands' })}
-            </CardText>
-          </Box>
-          {parsed.entries.map((entry) => (
-            <Box key={entry.command} direction="Column" gap="100">
-              <CardText size="T200" priority="400">
-                {entry.command}
-              </CardText>
-              {entry.description && (
-                <CardText size="T200" priority="300">
-                  {entry.description}
-                </CardText>
-              )}
-            </Box>
-          ))}
-        </CardShell>
-      );
+      return <HelpCard entries={parsed.entries} />;
     }
 
     if (parsed.kind === 'file' || parsed.kind === 'file_attached') {
@@ -404,6 +409,10 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
     }
 
     return null;
+  }
+
+  if (parsed.kind === 'help') {
+    return <HelpCard entries={parsed.entries} />;
   }
 
   if (parsed.kind === 'task_created') {
