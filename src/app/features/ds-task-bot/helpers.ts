@@ -5,6 +5,7 @@ import { getMentionContent } from '../../utils/room';
 import { getMxIdLocalPart } from '../../utils/matrix';
 import { notifySendError } from '../../utils/send';
 import { parseBotMessage, parseTaskLines } from './parser';
+import { BOT_COMMANDS } from './botCommandSuggestions';
 
 export const getBotLocalPart = (botMxid: string): string => getMxIdLocalPart(botMxid) ?? botMxid;
 
@@ -207,21 +208,29 @@ export const sendBotSeriesStop = async (
   }
 };
 
-const SUBCOMMANDS_WITHOUT_ARGS = ['help', 'verify'];
-const SUBCOMMANDS_WITH_FILTER = ['list', 'all'];
-const SUBCOMMANDS_WITH_ID = ['close', 'file'];
-
+// Набор сворачиваемых команд и форма их аргументов берутся из единого
+// дескриптора BOT_COMMANDS: новая команда в дескрипторе автоматически
+// сворачивается в таймлайне.
 export const isBotCommandText = (text: string): boolean => {
   const match = /^!([a-z]+)(?:\s+([\s\S]*))?$/.exec(text);
   if (!match) return false;
 
   const [, name, args] = match;
-  if (SUBCOMMANDS_WITHOUT_ARGS.includes(name)) return args === undefined;
-  if (SUBCOMMANDS_WITH_FILTER.includes(name)) return true;
-  if (SUBCOMMANDS_WITH_ID.includes(name)) return args !== undefined && /^\d+$/.test(args);
-  if (name === 'history') return true;
-  if (name === 'add') return true;
-  return false;
+  const command = BOT_COMMANDS.find(({ name: commandName }) => commandName === name);
+  if (!command) return false;
+
+  switch (command.arg) {
+    case 'none':
+      return args === undefined;
+    case 'optional':
+      return true;
+    case 'numeric':
+      return args !== undefined && /^\d+$/.test(args);
+    case 'any':
+      return args !== undefined;
+    default:
+      return false;
+  }
 };
 
 export const isBotCommandMessage = (mEvent: MatrixEvent, botMxid: string): boolean => {
@@ -247,7 +256,11 @@ export const isBotCommandMessage = (mEvent: MatrixEvent, botMxid: string): boole
 
 export const BOT_SERVICE_REPLY_MAX_LINES = 2;
 
-const ENVELOPE_COLLAPSIBLE_KINDS = new Set(['notice', 'created', 'closed', 'reminder']);
+// Сворачиваются только чистые уведомления без карточки задачи
+// (already_closed, verify_*, undecryptable, error, series_created/stopped
+// парсятся в kind notice). Ответы с карточками задач (created/closed/reminder,
+// в т.ч. созданные серией) сворачивать нельзя.
+const ENVELOPE_COLLAPSIBLE_KINDS = new Set(['notice']);
 
 export const isBotServiceReply = (mEvent: MatrixEvent, botMxid: string): boolean => {
   if (mEvent.getType() !== MessageEvent.RoomMessage) return false;
@@ -256,9 +269,7 @@ export const isBotServiceReply = (mEvent: MatrixEvent, botMxid: string): boolean
   const parsed = parseBotMessage(mEvent, botMxid);
   if (parsed) {
     if (parsed.origin === 'envelope') return ENVELOPE_COLLAPSIBLE_KINDS.has(parsed.kind);
-    return (
-      parsed.kind === 'notice' || parsed.kind === 'task_created' || parsed.kind === 'task_closed'
-    );
+    return parsed.kind === 'notice';
   }
 
   const { body } = mEvent.getContent();

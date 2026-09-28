@@ -19,19 +19,25 @@ export type BotCommandSuggestion = {
   insert: string;
 };
 
+// Форма аргументов команды: используется и для вставки в композер, и для
+// сворачивания команд в таймлайне (единый источник — новые команды из этого
+// списка автоматически попадают в сворачивание).
+export type BotCommandArg = 'none' | 'optional' | 'any' | 'numeric';
+
 export const BOT_COMMANDS: readonly {
   name: BotCommandName;
   needsArg: boolean;
+  arg: BotCommandArg;
   dmOnly?: boolean;
 }[] = [
-  { name: 'help', needsArg: false },
-  { name: 'list', needsArg: false },
-  { name: 'all', needsArg: false },
-  { name: 'history', needsArg: true },
-  { name: 'close', needsArg: true },
-  { name: 'file', needsArg: true },
-  { name: 'verify', needsArg: false },
-  { name: 'add', needsArg: true, dmOnly: true },
+  { name: 'help', needsArg: false, arg: 'none' },
+  { name: 'list', needsArg: false, arg: 'optional' },
+  { name: 'all', needsArg: false, arg: 'optional' },
+  { name: 'history', needsArg: true, arg: 'optional' },
+  { name: 'close', needsArg: true, arg: 'numeric' },
+  { name: 'file', needsArg: true, arg: 'numeric' },
+  { name: 'verify', needsArg: false, arg: 'none' },
+  { name: 'add', needsArg: true, arg: 'any', dmOnly: true },
 ];
 
 // Единственный источник подписей команд: используется и автодополнением `!`,

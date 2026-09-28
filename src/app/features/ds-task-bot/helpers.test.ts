@@ -187,10 +187,7 @@ describe('isBotCommandMessage', () => {
 });
 
 describe('isBotServiceReply', () => {
-  it('сворачивает короткие подтверждения и заглушки', () => {
-    expect(
-      isBotServiceReply(makeEvent(BOT_MXID, '✅ Задача [Дашборд]  успешно закрыта!'), BOT_MXID)
-    ).toBe(true);
+  it('сворачивает короткие заглушки бота', () => {
     expect(isBotServiceReply(makeEvent(BOT_MXID, '🥳 Назначенных вам задач нет!'), BOT_MXID)).toBe(
       true
     );
@@ -200,6 +197,18 @@ describe('isBotServiceReply', () => {
         BOT_MXID
       )
     ).toBe(true);
+  });
+
+  it('не сворачивает подтверждения создания и закрытия (рендерятся карточками задач)', () => {
+    expect(
+      isBotServiceReply(makeEvent(BOT_MXID, '✅ Задача [Дашборд]  успешно закрыта!'), BOT_MXID)
+    ).toBe(false);
+    expect(
+      isBotServiceReply(
+        makeEvent(BOT_MXID, `⏳ Задача [Отчёт] для пользователя [${OTHER_MXID}] успешно создана!`),
+        BOT_MXID
+      )
+    ).toBe(false);
   });
 
   it('сворачивает короткие уведомления бота (например, об ошибке)', () => {
@@ -234,7 +243,7 @@ describe('isBotServiceReply', () => {
     );
   });
 
-  it('сворачивает конверты created, closed, reminder и notice', () => {
+  it('не сворачивает конверты с карточками задач (created, closed, reminder)', () => {
     expect(
       isBotServiceReply(
         makeEnvelopeEvent(BOT_MXID, 'создана', {
@@ -244,7 +253,7 @@ describe('isBotServiceReply', () => {
         }),
         BOT_MXID
       )
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isBotServiceReply(
         makeEnvelopeEvent(BOT_MXID, 'закрыта', {
@@ -254,7 +263,7 @@ describe('isBotServiceReply', () => {
         }),
         BOT_MXID
       )
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isBotServiceReply(
         makeEnvelopeEvent(BOT_MXID, 'напоминание', {
@@ -264,7 +273,10 @@ describe('isBotServiceReply', () => {
         }),
         BOT_MXID
       )
-    ).toBe(true);
+    ).toBe(false);
+  });
+
+  it('сворачивает конверты-уведомления без карточки задачи (серии, ошибки)', () => {
     expect(
       isBotServiceReply(
         makeEnvelopeEvent(BOT_MXID, '🔁 Регулярная задача создана: каждый рабочий день в 17:00.', {
