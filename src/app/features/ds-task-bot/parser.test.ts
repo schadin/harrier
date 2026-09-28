@@ -380,6 +380,96 @@ describe('parseBotMessage с конвертом ru.ds_core.bot', () => {
     });
   });
 
+  it('справку с маркерами и упоминанием бота разбирает по строкам команд', () => {
+    const body = [
+      'В данный момент бот обрабатывает следующие команды:',
+      '🔔 В комнате (сначала упоминание бота, затем команда):',
+      '🎈 @dstaskbot:ds-core.ru !help - выдаст список команд',
+      '🎈 @dstaskbot:ds-core.ru !list - выдаст список ваших задач',
+      '🔔 В личных сообщениях (упоминание бота необязательно):',
+      '🎈 !verify - запросить проверку устройства бота',
+    ].join('\n');
+    const mEvent = makeEnvelopeEvent(BOT_MXID, body, { v: 1, kind: 'help' });
+
+    expect(parseBotMessage(mEvent, BOT_MXID)).toEqual({
+      origin: 'envelope',
+      kind: 'help',
+      entries: [
+        { command: '!help', description: 'выдаст список команд' },
+        { command: '!list', description: 'выдаст список ваших задач' },
+        { command: '!verify', description: 'запросить проверку устройства бота' },
+      ],
+    });
+  });
+
+  it('серию распознаёт уведомлением с данными series', () => {
+    const created = parseBotMessage(
+      makeEnvelopeEvent(BOT_MXID, '🔁 Регулярная задача создана: каждый рабочий день в 17:00.', {
+        v: 1,
+        kind: 'series_created',
+        series: {
+          id: 3,
+          active: true,
+          recurrence: 'каждый рабочий день в 17:00',
+          schedule: { type: 'weekday', time: '17:00' },
+          next_run_at: '2026-09-24T14:00:00Z',
+        },
+      }),
+      BOT_MXID
+    );
+    expect(created).toMatchObject({
+      origin: 'envelope',
+      kind: 'notice',
+      tone: 'info',
+      series: {
+        id: 3,
+        active: true,
+        recurrence: 'каждый рабочий день в 17:00',
+        schedule: { type: 'weekday', time: '17:00' },
+        nextRunAt: '2026-09-24T14:00:00Z',
+      },
+    });
+
+    const stopped = parseBotMessage(
+      makeEnvelopeEvent(BOT_MXID, '⏹ Серия остановлена.', {
+        v: 1,
+        kind: 'series_stopped',
+        series: { id: 3, active: false, schedule: { type: 'weekday', time: '17:00' } },
+      }),
+      BOT_MXID
+    );
+    expect(stopped).toMatchObject({
+      origin: 'envelope',
+      kind: 'notice',
+      tone: 'info',
+      series: { id: 3, active: false },
+    });
+  });
+
+  it('задачу серии распознаёт как created с данными series', () => {
+    const created = parseBotMessage(
+      makeEnvelopeEvent(BOT_MXID, '⏳ Добавлена задача /161: «подбить списание за день»', {
+        v: 1,
+        kind: 'created',
+        task: {
+          id: 161,
+          title: 'подбить списание за день',
+          author: MY_MXID,
+          assignee: MY_MXID,
+          status: 'open',
+        },
+        series: { id: 3, active: true, schedule: { type: 'weekday', time: '17:00' } },
+      }),
+      BOT_MXID
+    );
+    expect(created).toMatchObject({
+      origin: 'envelope',
+      kind: 'created',
+      task: { id: 161 },
+      series: { id: 3, active: true },
+    });
+  });
+
   it('справка без строк команд остаётся обычным текстом', () => {
     const mEvent = makeEnvelopeEvent(BOT_MXID, 'Помощь недоступна.', { v: 1, kind: 'help' });
 

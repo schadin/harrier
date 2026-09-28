@@ -186,6 +186,27 @@ export const sendBotCommand = async (
   return sendBotText(mx, roomId, body, mentionUserIds);
 };
 
+// Остановка регулярной задачи: бот останавливает серию по `!stop`, отправленному
+// ответом на любое сообщение серии.
+export const sendBotSeriesStop = async (
+  mx: MatrixClient,
+  roomId: string,
+  replyToEventId: string
+): Promise<string | null> => {
+  const content = {
+    msgtype: MsgType.Text,
+    body: '!stop',
+    'm.relates_to': { 'm.in_reply_to': { event_id: replyToEventId } },
+  } as unknown as RoomMessageEventContent;
+  try {
+    const response = await mx.sendMessage(roomId, content);
+    return response.event_id;
+  } catch (error) {
+    notifySendError(error);
+    return null;
+  }
+};
+
 const SUBCOMMANDS_WITHOUT_ARGS = ['help', 'verify'];
 const SUBCOMMANDS_WITH_FILTER = ['list', 'all'];
 const SUBCOMMANDS_WITH_ID = ['close', 'file'];

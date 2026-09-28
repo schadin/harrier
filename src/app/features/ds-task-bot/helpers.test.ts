@@ -267,6 +267,26 @@ describe('isBotServiceReply', () => {
     ).toBe(true);
     expect(
       isBotServiceReply(
+        makeEnvelopeEvent(BOT_MXID, '🔁 Регулярная задача создана: каждый рабочий день в 17:00.', {
+          v: 1,
+          kind: 'series_created',
+          series: { id: 3, active: true, schedule: { type: 'weekday', time: '17:00' } },
+        }),
+        BOT_MXID
+      )
+    ).toBe(true);
+    expect(
+      isBotServiceReply(
+        makeEnvelopeEvent(BOT_MXID, '⏹ Серия остановлена.', {
+          v: 1,
+          kind: 'series_stopped',
+          series: { id: 3, active: false, schedule: { type: 'weekday', time: '17:00' } },
+        }),
+        BOT_MXID
+      )
+    ).toBe(true);
+    expect(
+      isBotServiceReply(
         makeEnvelopeEvent(BOT_MXID, '⛔ Нельзя закрыть', { v: 1, kind: 'error', ok: false }),
         BOT_MXID
       )

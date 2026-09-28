@@ -7,8 +7,15 @@ import { SequenceCard } from '../../components/sequence-card';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
 import { timeDayMonYear, timeHourMinute } from '../../utils/time';
-import { canCloseTask, DsHelpEntry, DsTask, ParsedBotMessage, splitTasksByAssignee } from './parser';
-import { sendBotCommand } from './helpers';
+import {
+  canCloseTask,
+  DsHelpEntry,
+  DsSeries,
+  DsTask,
+  ParsedBotMessage,
+  splitTasksByAssignee,
+} from './parser';
+import { sendBotCommand, sendBotSeriesStop } from './helpers';
 import { cardFontFactor } from './cardFont';
 import { dsTaskBotLastTasksAtom, useDsTaskBotSettings } from '../../state/dsTaskBot';
 
@@ -19,6 +26,7 @@ type DsTaskBotCardsProps = {
   myUserId: string;
   botMxid: string;
   dm: boolean;
+  eventId: string;
 };
 
 const formatDateTime = (
@@ -206,31 +214,74 @@ function Section({
   onClose?: (task: DsTask) => void;
   onFile?: (task: DsTask) => void;
 }) {
+  if (tasks.length === 0) return null;
+
   return (
     <Box direction="Column" gap="100">
       <CardText size="T200" priority="400">
         {title}
       </CardText>
-      {tasks.length === 0 ? (
-        <CardText size="T200" priority="300">
-          —
-        </CardText>
-      ) : (
-        tasks.map((task) => (
-          <TaskRow
-            key={`${task.id}-${task.title}`}
-            task={task}
-            scope={scope}
-            onClose={onClose && canCloseTask(task, myUserId) ? () => onClose(task) : undefined}
-            onFile={onFile && (() => onFile(task))}
-          />
-        ))
-      )}
+      {tasks.map((task) => (
+        <TaskRow
+          key={`${task.id}-${task.title}`}
+          task={task}
+          scope={scope}
+          onClose={onClose && canCloseTask(task, myUserId) ? () => onClose(task) : undefined}
+          onFile={onFile && (() => onFile(task))}
+        />
+      ))}
     </Box>
   );
 }
 
-function NoticeCard({ tone, text, task }: { tone: 'info' | 'error'; text: string; task?: DsTask }) {
+// Заглушка карточки списка, когда обе секции пусты: показывается вместо секций.
+function EmptyTasks() {
+  const { t } = useTranslation();
+  return (
+    <CardText size="T200" priority="300">
+      {t('DsTaskBot.NoTasks', { defaultValue: 'No tasks' })}
+    </CardText>
+  );
+}
+
+// Человекочитаемое расписание серии: приоритет у `recurrence` от бота.
+export const seriesScheduleLabel = (series: DsSeries): string =>
+  series.recurrence ?? `${series.schedule.type} ${series.schedule.time}`;
+
+function SeriesInfo({ series }: { series: DsSeries }) {
+  const { t } = useTranslation();
+  return (
+    <CardText size="T200" priority="300" truncate>
+      🔁 {seriesScheduleLabel(series)}
+      {series.active === false && ` · ${t('DsTaskBot.SeriesStopped', { defaultValue: 'Stopped' })}`}
+    </CardText>
+  );
+}
+
+function StopSeriesButton({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <Box>
+      <Button as="button" size="300" variant="Secondary" fill="Soft" radii="400" onClick={onClick}>
+        <CardText size="T200">{t('DsTaskBot.StopSeries', { defaultValue: 'Cancel' })}</CardText>
+      </Button>
+    </Box>
+  );
+}
+
+function NoticeCard({
+  tone,
+  text,
+  task,
+  series,
+  onStopSeries,
+}: {
+  tone: 'info' | 'error';
+  text: string;
+  task?: DsTask;
+  series?: DsSeries;
+  onStopSeries?: () => void;
+}) {
   return (
     <CardShell>
       <Box alignItems="Center" gap="200">
@@ -244,13 +295,23 @@ function NoticeCard({ tone, text, task }: { tone: 'info' | 'error'; text: string
               {task.id} {task.title}
             </CardText>
           )}
+          {series && <SeriesInfo series={series} />}
         </Box>
       </Box>
+      {series?.active && onStopSeries && <StopSeriesButton onClick={onStopSeries} />}
     </CardShell>
   );
 }
 
-export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: DsTaskBotCardsProps) {
+export function DsTaskBotCards({
+  parsed,
+  mx,
+  roomId,
+  myUserId,
+  botMxid,
+  dm,
+  eventId,
+}: DsTaskBotCardsProps) {
   const { t } = useTranslation();
   const setLastTasks = useSetAtom(dsTaskBotLastTasksAtom);
 
@@ -285,9 +346,21 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
     sendBotCommand(mx, roomId, botMxid, dm, 'file', String(taskId));
   };
 
+  const stopSeries = () => {
+    sendBotSeriesStop(mx, roomId, eventId);
+  };
+
   if (parsed.origin === 'envelope') {
     if (parsed.kind === 'notice') {
-      return <NoticeCard tone={parsed.tone} text={parsed.text} task={parsed.task} />;
+      return (
+        <NoticeCard
+          tone={parsed.tone}
+          text={parsed.text}
+          task={parsed.task}
+          series={parsed.series}
+          onStopSeries={parsed.series ? stopSeries : undefined}
+        />
+      );
     }
 
     if (parsed.kind === 'help') {
@@ -367,6 +440,8 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
             onClose={canClose ? () => sendClose(task.id) : undefined}
             onFile={canFile ? () => sendFile(task.id) : undefined}
           />
+          {parsed.series && <SeriesInfo series={parsed.series} />}
+          {parsed.series?.active && <StopSeriesButton onClick={stopSeries} />}
         </CardShell>
       );
     }
@@ -388,6 +463,7 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
             {title}
             {parsed.filterTag ? ` #${parsed.filterTag}` : ''}
           </CardText>
+          {assignedToMe.length === 0 && assignedByMe.length === 0 && <EmptyTasks />}
           <Section
             title={t('DsTaskBot.AssignedToMe', { defaultValue: 'Assigned to me' })}
             tasks={assignedToMe}
@@ -457,6 +533,7 @@ export function DsTaskBotCards({ parsed, mx, roomId, myUserId, botMxid, dm }: Ds
   return (
     <CardShell>
       <CardText size="T300">{t('DsTaskBot.Tasks', { defaultValue: 'Tasks' })}</CardText>
+      {assignedToMe.length === 0 && assignedByMe.length === 0 && <EmptyTasks />}
       <Section
         title={t('DsTaskBot.AssignedToMe', { defaultValue: 'Assigned to me' })}
         tasks={assignedToMe}

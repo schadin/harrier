@@ -1,9 +1,9 @@
 import { MatrixEvent } from 'matrix-js-sdk';
 import { MessageEvent } from '../../../types/matrix/room';
 import { parseEnvelope } from './envelope';
-import type { DsEnvelope, DsFile, DsTask } from './envelope';
+import type { DsEnvelope, DsFile, DsSeries, DsTask } from './envelope';
 
-export type { DsFile, DsTask, DsTaskStatus } from './envelope';
+export type { DsFile, DsSeries, DsSeriesSchedule, DsTask, DsTaskStatus } from './envelope';
 
 export type DsTaskCreated = {
   title: string;
@@ -34,9 +34,16 @@ export type ParsedBotMessage =
       scope?: string;
       filterTag?: string;
     }
-  | { origin: 'envelope'; kind: DsTaskCardKind; task: DsTask }
+  | { origin: 'envelope'; kind: DsTaskCardKind; task: DsTask; series?: DsSeries }
   | { origin: 'envelope'; kind: 'file' | 'file_attached'; task?: DsTask; files: DsFile[] }
-  | { origin: 'envelope'; kind: 'notice'; tone: 'info' | 'error'; text: string; task?: DsTask }
+  | {
+      origin: 'envelope';
+      kind: 'notice';
+      tone: 'info' | 'error';
+      text: string;
+      task?: DsTask;
+      series?: DsSeries;
+    }
   | { origin: 'envelope'; kind: 'help'; entries: DsHelpEntry[] }
   | { origin: 'text'; kind: 'help'; entries: DsHelpEntry[] }
   | { origin: 'text'; kind: 'tasks'; tasks: DsTask[] }
@@ -83,9 +90,13 @@ export const parseNotice = (body: string): DsNotice | null => {
 const HELP_LINE_PATTERN = /^(!\S+(?:\s+\S+)*?)\s+[—–-]\s+(.+)$/;
 const HELP_COMMAND_PATTERN = /^!\S+(?:\s+\S+)*$/;
 
+// Префикс строки справки: декоративные маркеры (🎈, 🔔, •) и/или упоминание
+// бота перед `!команда` — «🎈 @dstaskbot:ds-core.ru !help - …».
+const HELP_LINE_PREFIX_PATTERN = /^(?:[🎈🔔•*]\s*)?(?:@\S+\s+)?/u;
+
 export const parseHelpEntries = (body: string): DsHelpEntry[] =>
   body.split('\n').flatMap((line) => {
-    const text = line.trim();
+    const text = line.trim().replace(HELP_LINE_PREFIX_PATTERN, '');
     if (!text.startsWith('!')) return [];
     const match = HELP_LINE_PATTERN.exec(text);
     if (match) return [{ command: match[1], description: match[2].trim() }];
@@ -97,21 +108,10 @@ export const parseHelpEntries = (body: string): DsHelpEntry[] =>
 // команду или упоминание без команды.
 const TEXT_HELP_MARKER_PATTERN = /Команда не распознана|обрабатывает следующие команды/i;
 
-// Префикс строки справки: декоративные маркеры (🎈, 🔔, •) и/или упоминание
-// бота перед `!команда` — «🎈 @dstaskbot:ds-core.ru !help - …».
-const HELP_LINE_PREFIX_PATTERN = /^(?:[🎈🔔•*]\s*)?(?:@\S+\s+)?/u;
-
-// Текстовая справка: строки вида «[🎈] [@бот] !команда [арг] — описание».
-// Распознаётся по маркеру либо по наличию хотя бы двух строк команд.
+// Текстовая справка без конверта (старые сообщения бота): распознаётся по
+// маркеру либо по наличию хотя бы двух строк команд.
 export const parseTextHelpEntries = (body: string): DsHelpEntry[] | null => {
-  const entries = body.split('\n').flatMap((line) => {
-    const text = line.trim().replace(HELP_LINE_PREFIX_PATTERN, '');
-    if (!text.startsWith('!')) return [];
-    const match = HELP_LINE_PATTERN.exec(text);
-    if (match) return [{ command: match[1], description: match[2].trim() }];
-    if (HELP_COMMAND_PATTERN.test(text)) return [{ command: text }];
-    return [];
-  });
+  const entries = parseHelpEntries(body);
 
   if (entries.length === 0) return null;
   if (entries.length >= 2 || TEXT_HELP_MARKER_PATTERN.test(body)) return entries;
@@ -161,7 +161,7 @@ export const parseEnvelopeMessage = (
     case 'closed':
     case 'reminder':
       if (!envelope.task) return null;
-      return { origin: 'envelope', kind: envelope.kind, task: envelope.task };
+      return { origin: 'envelope', kind: envelope.kind, task: envelope.task, series: envelope.series };
     case 'file':
     case 'file_attached':
       return {
@@ -180,6 +180,10 @@ export const parseEnvelopeMessage = (
     case 'undecryptable':
       if (!body) return null;
       return { origin: 'envelope', kind: 'notice', tone: 'info', text: body };
+    case 'series_created':
+    case 'series_stopped':
+      if (!body) return null;
+      return { origin: 'envelope', kind: 'notice', tone: 'info', text: body, series: envelope.series };
     case 'verify_denied':
     case 'error':
       if (!body) return null;

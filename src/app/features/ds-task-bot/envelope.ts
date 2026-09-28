@@ -36,6 +36,8 @@ export const DS_BOT_KINDS = [
   'reminder',
   'file',
   'file_attached',
+  'series_created',
+  'series_stopped',
   'verify_request',
   'verify_started',
   'verify_pending',
@@ -49,6 +51,21 @@ export type DsEnvelopeKind = typeof DS_BOT_KINDS[number];
 
 const KIND_SET = new Set<string>(DS_BOT_KINDS);
 
+export type DsSeriesSchedule = {
+  type: string;
+  time: string;
+  weekday?: number;
+  day?: number;
+};
+
+export type DsSeries = {
+  id: number;
+  active: boolean;
+  recurrence?: string;
+  schedule: DsSeriesSchedule;
+  nextRunAt?: string;
+};
+
 export type DsEnvelope = {
   v: 1;
   kind: DsEnvelopeKind;
@@ -59,6 +76,7 @@ export type DsEnvelope = {
     filterTag?: string;
   };
   files?: DsFile[];
+  series?: DsSeries;
   user?: string;
   ok?: boolean;
 };
@@ -111,6 +129,31 @@ export const parseEnvelopeFiles = (value: unknown): DsFile[] => {
   });
 };
 
+export const parseEnvelopeSeries = (value: unknown): DsSeries | null => {
+  if (!isRecord(value)) return null;
+
+  const id = asNumber(value.id);
+  if (id === undefined || typeof value.active !== 'boolean') return null;
+
+  const schedule = isRecord(value.schedule) ? value.schedule : undefined;
+  const scheduleType = asString(schedule?.type);
+  const scheduleTime = asString(schedule?.time);
+  if (scheduleType === undefined || scheduleTime === undefined) return null;
+
+  return {
+    id,
+    active: value.active,
+    recurrence: asString(value.recurrence),
+    schedule: {
+      type: scheduleType,
+      time: scheduleTime,
+      weekday: asNumber(schedule?.weekday),
+      day: asNumber(schedule?.day),
+    },
+    nextRunAt: asString(value.next_run_at),
+  };
+};
+
 export const parseEnvelopeTasks = (
   value: unknown
 ): { items: DsTask[]; scope?: string; filterTag?: string } | null => {
@@ -146,6 +189,9 @@ export const parseEnvelope = (mEvent: MatrixEvent): DsEnvelope | null => {
 
   const files = parseEnvelopeFiles(raw.files);
   if (files.length > 0) envelope.files = files;
+
+  const series = parseEnvelopeSeries(raw.series);
+  if (series) envelope.series = series;
 
   const user = asString(raw.user);
   if (user !== undefined) envelope.user = user;

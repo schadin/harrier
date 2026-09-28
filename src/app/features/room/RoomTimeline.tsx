@@ -1159,6 +1159,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                     myUserId={mx.getUserId() ?? ''}
                     botMxid={dsBotMxid}
                     dm={direct}
+                    eventId={mEventId}
                   />
                 );
                 if (parsedBotContent.origin === 'envelope' && parsedBotContent.kind === 'file') {

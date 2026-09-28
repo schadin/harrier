@@ -136,29 +136,32 @@ export function DsTaskBot({ requestClose }: DsTaskBotProps) {
                 <Text size="L400">
                   {t('DsTaskBot.SettingsTitle', { defaultValue: 'DsTaskBot' })}
                 </Text>
-                <SequenceCard className={SequenceCardStyle}>
+                <SequenceCard
+                  className={SequenceCardStyle}
+                  variant="SurfaceVariant"
+                  direction="Column"
+                  gap="400"
+                >
                   <SettingTile
                     title={t('DsTaskBot.BotMxid', { defaultValue: 'Bot MXID' })}
                     description={t('DsTaskBot.BotMxidDescription', {
                       defaultValue:
                         'Matrix ID of the task bot. Its replies are parsed and commands forwarded.',
                     })}
-                  >
-                    <Box direction="Column" grow="Yes" gap="100">
-                      <Box as="form" onSubmit={handleMxidSubmit} gap="200">
-                        <Box grow="Yes" direction="Column">
-                          <Input
-                            name="botMxidInput"
-                            value={botMxidInput}
-                            onChange={handleMxidChange}
-                            autoComplete="off"
-                            variant="Secondary"
-                            radii="300"
-                            style={{ paddingRight: config.space.S200 }}
-                          />
-                        </Box>
+                    after={
+                      <Box as="form" onSubmit={handleMxidSubmit} gap="200" alignItems="Center">
+                        <Input
+                          name="botMxidInput"
+                          value={botMxidInput}
+                          onChange={handleMxidChange}
+                          autoComplete="off"
+                          variant="Secondary"
+                          size="300"
+                          radii="300"
+                          style={{ width: toRem(220), paddingRight: config.space.S200 }}
+                        />
                         <Button
-                          size="400"
+                          size="300"
                           variant={hasMxidChanges ? 'Success' : 'Secondary'}
                           fill={hasMxidChanges ? 'Solid' : 'Soft'}
                           outlined
@@ -166,49 +169,76 @@ export function DsTaskBot({ requestClose }: DsTaskBotProps) {
                           disabled={!hasMxidChanges}
                           type="submit"
                         >
-                          <Text size="B400">{t('DsTaskBot.Save', { defaultValue: 'Save' })}</Text>
+                          <Text size="B300">{t('DsTaskBot.Save', { defaultValue: 'Save' })}</Text>
                         </Button>
                       </Box>
-                    </Box>
-                  </SettingTile>
+                    }
+                  />
                 </SequenceCard>
               </Box>
               <Box direction="Column" gap="100">
                 <Text size="L400">{t('DsTaskBot.Features', { defaultValue: 'Features' })}</Text>
-                <SequenceCard className={SequenceCardStyle}>
+                <SequenceCard
+                  className={SequenceCardStyle}
+                  variant="SurfaceVariant"
+                  direction="Column"
+                  gap="400"
+                >
                   <SettingTile
                     title={t('DsTaskBot.CommandHelpers', { defaultValue: 'Command helpers' })}
                     description={t('DsTaskBot.CommandHelpersDescription', {
                       defaultValue: 'Enable the /dstask command and autocomplete for the bot.',
                     })}
-                  >
-                    <Switch
-                      variant="Primary"
-                      value={settings.helpersEnabled}
-                      onChange={toggle('helpersEnabled')}
-                    />
-                  </SettingTile>
+                    after={
+                      <Switch
+                        variant="Primary"
+                        value={settings.helpersEnabled}
+                        onChange={toggle('helpersEnabled')}
+                      />
+                    }
+                  />
+                </SequenceCard>
+                <SequenceCard
+                  className={SequenceCardStyle}
+                  variant="SurfaceVariant"
+                  direction="Column"
+                  gap="400"
+                >
                   <SettingTile
                     title={t('DsTaskBot.TaskCards', { defaultValue: 'Task cards' })}
                     description={t('DsTaskBot.TaskCardsDescription', {
                       defaultValue: 'Render bot task lists as cards in the timeline.',
                     })}
-                  >
-                    <Switch
-                      variant="Primary"
-                      value={settings.cardsEnabled}
-                      onChange={toggle('cardsEnabled')}
-                    />
-                  </SettingTile>
+                    after={
+                      <Switch
+                        variant="Primary"
+                        value={settings.cardsEnabled}
+                        onChange={toggle('cardsEnabled')}
+                      />
+                    }
+                  />
+                </SequenceCard>
+                <SequenceCard
+                  className={SequenceCardStyle}
+                  variant="SurfaceVariant"
+                  direction="Column"
+                  gap="400"
+                >
                   <SettingTile
                     title={t('DsTaskBot.CardFontScale', { defaultValue: 'Card text size' })}
                     description={t('DsTaskBot.CardFontScaleDescription', {
                       defaultValue:
                         'Scale of text inside DsTaskBot cards, in percent (100% by default).',
                     })}
-                  >
-                    <CardFontScaleInput />
-                  </SettingTile>
+                    after={<CardFontScaleInput />}
+                  />
+                </SequenceCard>
+                <SequenceCard
+                  className={SequenceCardStyle}
+                  variant="SurfaceVariant"
+                  direction="Column"
+                  gap="400"
+                >
                   <SettingTile
                     title={t('DsTaskBot.CollapseCommands', {
                       defaultValue: 'Collapse bot commands',
@@ -216,13 +246,14 @@ export function DsTaskBot({ requestClose }: DsTaskBotProps) {
                     description={t('DsTaskBot.CollapseCommandsDescription', {
                       defaultValue: 'Collapse list, all and close commands in the room timeline.',
                     })}
-                  >
-                    <Switch
-                      variant="Primary"
-                      value={settings.collapseCommandsEnabled}
-                      onChange={toggle('collapseCommandsEnabled')}
-                    />
-                  </SettingTile>
+                    after={
+                      <Switch
+                        variant="Primary"
+                        value={settings.collapseCommandsEnabled}
+                        onChange={toggle('collapseCommandsEnabled')}
+                      />
+                    }
+                  />
                 </SequenceCard>
               </Box>
             </Box>
