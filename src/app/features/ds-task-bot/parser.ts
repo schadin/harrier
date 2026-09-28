@@ -161,7 +161,12 @@ export const parseEnvelopeMessage = (
     case 'closed':
     case 'reminder':
       if (!envelope.task) return null;
-      return { origin: 'envelope', kind: envelope.kind, task: envelope.task, series: envelope.series };
+      return {
+        origin: 'envelope',
+        kind: envelope.kind,
+        task: envelope.task,
+        series: envelope.series,
+      };
     case 'file':
     case 'file_attached':
       return {
@@ -183,7 +188,13 @@ export const parseEnvelopeMessage = (
     case 'series_created':
     case 'series_stopped':
       if (!body) return null;
-      return { origin: 'envelope', kind: 'notice', tone: 'info', text: body, series: envelope.series };
+      return {
+        origin: 'envelope',
+        kind: 'notice',
+        tone: 'info',
+        text: body,
+        series: envelope.series,
+      };
     case 'verify_denied':
     case 'error':
       if (!body) return null;
