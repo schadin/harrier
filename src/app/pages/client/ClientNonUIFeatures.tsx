@@ -44,6 +44,7 @@ import {
   stripTimeSuffix,
 } from '../../plugins/custom-status';
 import {
+  applyAutostart,
   listenTrayStatus,
   setActiveStatus,
   setDesktopSettings,
@@ -115,6 +116,7 @@ function DesktopFeatures() {
   const [showTrayIcon] = useSetting(settingsAtom, 'showTrayIcon');
   const [customPresets] = useSetting(settingsAtom, 'statusPresets');
   const [statusNoticeRoomId] = useSetting(settingsAtom, 'statusNoticeRoomId');
+  const [autostart, setAutostartSetting] = useSetting(settingsAtom, 'autostart');
 
   useEffect(() => {
     if (!isTauri()) return undefined;
@@ -123,6 +125,21 @@ function DesktopFeatures() {
     }, 100);
     return () => clearTimeout(timer);
   }, [showTrayIcon]);
+
+  useEffect(() => {
+    if (!isTauri()) return undefined;
+    let disposed = false;
+    const timer = setTimeout(() => {
+      applyAutostart(autostart).then((applied) => {
+        // регистрация не удалась — вернуть переключатель в выключенное положение
+        if (!disposed && !applied) setAutostartSetting(false);
+      });
+    }, 100);
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+    };
+  }, [autostart, setAutostartSetting]);
 
   useEffect(() => {
     if (!isTauri()) return undefined;

@@ -57,6 +57,7 @@ export interface Settings {
   statusPresets: StatusPreset[];
   statusNoticeRoomId?: string;
   showTrayIcon: boolean;
+  autostart: boolean;
   roomSortDefault: RoomSortType;
 }
 
@@ -98,6 +99,7 @@ const defaultSettings: Settings = {
   statusPresets: [],
   statusNoticeRoomId: '',
   showTrayIcon: false,
+  autostart: false,
   roomSortDefault: 'manual',
 };
 

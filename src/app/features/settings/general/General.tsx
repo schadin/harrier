@@ -366,6 +366,7 @@ function Appearance() {
 
 function Desktop() {
   const [showTrayIcon, setShowTrayIcon] = useSetting(settingsAtom, 'showTrayIcon');
+  const [autostart, setAutostart] = useSetting(settingsAtom, 'autostart');
 
   if (!isTauri()) return null;
 
@@ -377,6 +378,11 @@ function Desktop() {
           title="Show Tray Icon"
           description="Show the app icon in the system tray."
           after={<Switch variant="Primary" value={showTrayIcon} onChange={setShowTrayIcon} />}
+        />
+        <SettingTile
+          title="Launch at Login"
+          description="Start Harrier automatically when you log in to the system."
+          after={<Switch variant="Primary" value={autostart} onChange={setAutostart} />}
         />
       </SequenceCard>
     </Box>
