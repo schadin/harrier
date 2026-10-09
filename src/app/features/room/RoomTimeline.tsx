@@ -1059,6 +1059,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         const highlighted = focusItem?.index === item && focusItem.highlight;
 
         const editedEvent = getEditedEvent(mEventId, mEvent, timelineSet);
+        const showEditedInline = !!editedEvent && messageLayout !== MessageLayout.Bubble;
         const getContent = (() =>
           editedEvent?.getContent()['m.new_content'] ?? mEvent.getContent()) as GetContentCallback;
 
@@ -1084,6 +1085,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             collapse={collapse}
             highlight={highlighted}
             edit={editId === mEventId}
+            edited={!!editedEvent}
             canDelete={canRedact || (canDeleteOwn && mEvent.getSender() === mx.getUserId())}
             canSendReaction={canSendReaction}
             canPinEvent={canPinEvent}
@@ -1140,7 +1142,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                   displayName={senderDisplayName}
                   msgType={mEvent.getContent().msgtype ?? ''}
                   ts={mEvent.getTs()}
-                  edited={!!editedEvent}
+                  edited={showEditedInline}
                   getContent={getContent}
                   mediaAutoLoad={mediaAutoLoad}
                   urlPreview={showUrlPreview}
@@ -1183,6 +1185,8 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         const hasReactions = reactions && reactions.length > 0;
         const { replyEventId, threadRootId } = mEvent;
         const highlighted = focusItem?.index === item && focusItem.highlight;
+        const editedEvent = getEditedEvent(mEventId, mEvent, timelineSet);
+        const showEditedInline = !!editedEvent && messageLayout !== MessageLayout.Bubble;
 
         return (
           <Message
@@ -1196,6 +1200,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             collapse={collapse}
             highlight={highlighted}
             edit={editId === mEventId}
+            edited={!!editedEvent}
             canDelete={canRedact || (canDeleteOwn && mEvent.getSender() === mx.getUserId())}
             canSendReaction={canSendReaction}
             canPinEvent={canPinEvent}
@@ -1259,7 +1264,6 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                     />
                   );
                 if (mEvent.getType() === MessageEvent.RoomMessage) {
-                  const editedEvent = getEditedEvent(mEventId, mEvent, timelineSet);
                   const getContent = (() =>
                     editedEvent?.getContent()['m.new_content'] ??
                     mEvent.getContent()) as GetContentCallback;
@@ -1272,7 +1276,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                       displayName={senderDisplayName}
                       msgType={mEvent.getContent().msgtype ?? ''}
                       ts={mEvent.getTs()}
-                      edited={!!editedEvent}
+                      edited={showEditedInline}
                       getContent={getContent}
                       mediaAutoLoad={mediaAutoLoad}
                       urlPreview={showUrlPreview}

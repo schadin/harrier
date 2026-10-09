@@ -41,6 +41,7 @@ import {
   BubbleLayout,
   CompactLayout,
   MessageBase,
+  MessageEditedContent,
   MessageStatus,
   ModernLayout,
   Time,
@@ -727,6 +728,8 @@ export type MessageProps = {
   relations?: Relations;
   messageLayout: MessageLayout;
   messageSpacing: MessageSpacing;
+  /** Event has an `m.replace` edit — rendered by the Bubble meta footer (#55). */
+  edited?: boolean;
   onUserClick: MouseEventHandler<HTMLButtonElement>;
   onUsernameClick: MouseEventHandler<HTMLButtonElement>;
   onReplyClick: (
@@ -762,6 +765,7 @@ export const Message = as<'div', MessageProps>(
       relations,
       messageLayout,
       messageSpacing,
+      edited,
       onUserClick,
       onUsernameClick,
       onReplyClick,
@@ -842,13 +846,17 @@ export const Message = as<'div', MessageProps>(
               </Text>
             </>
           )}
-          <Time
-            ts={mEvent.getTs()}
-            compact={messageLayout === MessageLayout.Compact}
-            hour24Clock={hour24Clock}
-            dateFormatString={dateFormatString}
-          />
-          <MessageStatus room={room} mEvent={mEvent} />
+          {messageLayout !== MessageLayout.Bubble && (
+            <>
+              <Time
+                ts={mEvent.getTs()}
+                compact={messageLayout === MessageLayout.Compact}
+                hour24Clock={hour24Clock}
+                dateFormatString={dateFormatString}
+              />
+              <MessageStatus room={room} mEvent={mEvent} />
+            </>
+          )}
         </Box>
       </Box>
     );
@@ -878,6 +886,20 @@ export const Message = as<'div', MessageProps>(
       </AvatarBase>
     );
 
+    const bubbleMetaFooter = messageLayout === MessageLayout.Bubble && !edit && (
+      <Box
+        direction="Row"
+        alignItems="Center"
+        justifyContent="End"
+        gap="100"
+        style={{ marginTop: config.space.S100 }}
+      >
+        <MessageStatus room={room} mEvent={mEvent} always />
+        {edited && <MessageEditedContent noLeadingSpace />}
+        <Time ts={mEvent.getTs()} hour24Clock={hour24Clock} dateFormatString={dateFormatString} />
+      </Box>
+    );
+
     const msgContentJSX = (
       <Box direction="Column" alignSelf="Start" style={{ maxWidth: '100%' }}>
         {reply}
@@ -897,6 +919,7 @@ export const Message = as<'div', MessageProps>(
           children
         )}
         {reactions}
+        {bubbleMetaFooter}
       </Box>
     );
 
