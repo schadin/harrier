@@ -17,9 +17,20 @@ import { useSetting } from '../../state/hooks/settings';
 export type MessageStatusProps = {
   room: Room;
   mEvent: MatrixEvent;
+  /**
+   * Show the indicator for own messages regardless of room type and
+   * `directReadReceipts` mode. Used by the Bubble layout, where the whole
+   * message meta line lives inside the bubble.
+   */
+  always?: boolean;
 };
 
-function MessageStatusIndicator({ room, mEvent }: MessageStatusProps) {
+type MessageStatusIndicatorProps = {
+  room: Room;
+  mEvent: MatrixEvent;
+};
+
+function MessageStatusIndicator({ room, mEvent }: MessageStatusIndicatorProps) {
   const mx = useMatrixClient();
   const [sendStatus, setSendStatus] = useState<EventStatus | null>(() =>
     mEvent.getAssociatedStatus()
@@ -56,7 +67,7 @@ function MessageStatusIndicator({ room, mEvent }: MessageStatusProps) {
   return <Icon size="100" src={Icons.Check} />;
 }
 
-export function MessageStatus({ room, mEvent }: MessageStatusProps) {
+export function MessageStatus({ room, mEvent, always = false }: MessageStatusProps) {
   const mx = useMatrixClient();
   const mDirects = useAtomValue(mDirectAtom);
   const [directReadReceipts] = useSetting(settingsAtom, 'directReadReceipts');
@@ -72,7 +83,7 @@ export function MessageStatus({ room, mEvent }: MessageStatusProps) {
 
   if (isSending || isFailed) return <MessageStatusIndicator room={room} mEvent={mEvent} />;
 
-  if (!mDirects.has(room.roomId) || directReadReceipts !== 'checkmark') return null;
+  if (!always && (!mDirects.has(room.roomId) || directReadReceipts !== 'checkmark')) return null;
 
   return <MessageStatusIndicator room={room} mEvent={mEvent} />;
 }

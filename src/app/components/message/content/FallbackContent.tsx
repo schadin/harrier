@@ -86,8 +86,10 @@ export const MessageEmptyContent = as<'div', { children?: never }>(({ ...props }
   </Box>
 ));
 
-export const MessageEditedContent = as<'span', { children?: never }>(({ ...props }, ref) => (
-  <Text as="span" size="T200" priority="300" {...props} ref={ref}>
-    {' (edited)'}
-  </Text>
-));
+export const MessageEditedContent = as<'span', { children?: never; noLeadingSpace?: boolean }>(
+  ({ noLeadingSpace, ...props }, ref) => (
+    <Text as="span" size="T200" priority="300" {...props} ref={ref}>
+      {noLeadingSpace ? '(edited)' : ' (edited)'}
+    </Text>
+  )
+);
