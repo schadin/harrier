@@ -897,6 +897,7 @@ export const Message = as<'div', MessageProps>(
         {edited && <Icon size="100" src={Icons.Pencil} />}
         <Time
           ts={mEvent.getTs()}
+          compact
           hour24Clock={hour24Clock}
           dateFormatString={dateFormatString}
           title={`${timeDayMonthYear(mEvent.getTs())}, ${timeHourMinute(
