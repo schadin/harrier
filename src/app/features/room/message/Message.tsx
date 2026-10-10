@@ -41,7 +41,6 @@ import {
   BubbleLayout,
   CompactLayout,
   MessageBase,
-  MessageEditedContent,
   MessageStatus,
   ModernLayout,
   Time,
@@ -55,6 +54,7 @@ import {
   getMemberDisplayName,
 } from '../../../utils/room';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../../utils/matrix';
+import { timeDayMonthYear, timeHourMinute } from '../../../utils/time';
 import { MessageLayout, MessageSpacing } from '../../../state/settings';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useRecentEmoji } from '../../../hooks/useRecentEmoji';
@@ -894,9 +894,17 @@ export const Message = as<'div', MessageProps>(
         gap="100"
         style={{ marginTop: config.space.S100 }}
       >
+        {edited && <Icon size="100" src={Icons.Pencil} />}
+        <Time
+          ts={mEvent.getTs()}
+          hour24Clock={hour24Clock}
+          dateFormatString={dateFormatString}
+          title={`${timeDayMonthYear(mEvent.getTs())}, ${timeHourMinute(
+            mEvent.getTs(),
+            hour24Clock
+          )}`}
+        />
         <MessageStatus room={room} mEvent={mEvent} always />
-        {edited && <MessageEditedContent noLeadingSpace />}
-        <Time ts={mEvent.getTs()} hour24Clock={hour24Clock} dateFormatString={dateFormatString} />
       </Box>
     );
 
