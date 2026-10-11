@@ -24,5 +24,44 @@
       "UnknownSenderDevice": "Das Gerät des Absenders ist unbekannt",
       "Unknown": "Diese Nachricht kann nicht entschlüsselt werden"
     }
+  },
+  "CommandPalette": {
+    "placeholder": "Räume, Personen, Aktionen suchen…",
+    "noResults": "Keine Treffer",
+    "noResultsFor": "Keine Treffer für \"{{query}}\".",
+    "recent": "Zuletzt verwendet",
+    "hint": "Tippe",
+    "hintRooms": "für Räume",
+    "hintPeople": "für Personen",
+    "hintSpaces": "für Spaces",
+    "hotkey": "Tastenkürzel",
+    "categories": {
+      "actions": "Aktionen",
+      "rooms": "Räume",
+      "people": "Personen",
+      "spaces": "Spaces",
+      "settings": "Einstellungen"
+    },
+    "settings": {
+      "general": "Allgemein",
+      "account": "Konto",
+      "status": "Status",
+      "notifications": "Benachrichtigungen",
+      "devices": "Geräte",
+      "emojisStickers": "Emojis & Sticker",
+      "developerTools": "Entwicklerwerkzeuge",
+      "about": "Über"
+    },
+    "actions": {
+      "setStatus": "Status setzen: {{status}}",
+      "clearStatus": "Status löschen",
+      "muteRoom": "Raum stummschalten",
+      "unmuteRoom": "Stummschaltung des Raums aufheben",
+      "markAllRead": "Alle als gelesen markieren",
+      "createRoom": "Raum erstellen",
+      "createDm": "Direktnachricht erstellen",
+      "createSpace": "Space erstellen",
+      "logout": "Abmelden"
+    }
   }
 }

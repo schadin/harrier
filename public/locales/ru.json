@@ -63,5 +63,44 @@
       "UnknownSenderDevice": "Устройство отправителя неизвестно",
       "Unknown": "Это сообщение невозможно расшифровать"
     }
+  },
+  "CommandPalette": {
+    "placeholder": "Поиск комнат, людей, действий…",
+    "noResults": "Ничего не найдено",
+    "noResultsFor": "По запросу «{{query}}» ничего не найдено.",
+    "recent": "Недавние",
+    "hint": "Введите",
+    "hintRooms": "— комнаты",
+    "hintPeople": "— люди",
+    "hintSpaces": "— пространства",
+    "hotkey": "Горячая клавиша",
+    "categories": {
+      "actions": "Действия",
+      "rooms": "Комнаты",
+      "people": "Люди",
+      "spaces": "Пространства",
+      "settings": "Настройки"
+    },
+    "settings": {
+      "general": "Общие",
+      "account": "Аккаунт",
+      "status": "Статус",
+      "notifications": "Уведомления",
+      "devices": "Устройства",
+      "emojisStickers": "Эмодзи и стикеры",
+      "developerTools": "Инструменты разработчика",
+      "about": "О программе"
+    },
+    "actions": {
+      "setStatus": "Установить статус: {{status}}",
+      "clearStatus": "Очистить статус",
+      "muteRoom": "Отключить уведомления в комнате",
+      "unmuteRoom": "Включить уведомления в комнате",
+      "markAllRead": "Отметить всё прочитанным",
+      "createRoom": "Создать комнату",
+      "createDm": "Создать личный чат",
+      "createSpace": "Создать пространство",
+      "logout": "Выйти"
+    }
   }
 }

@@ -68,5 +68,44 @@
       "UnknownSenderDevice": "The sender's device is unknown",
       "Unknown": "This message cannot be decrypted"
     }
+  },
+  "CommandPalette": {
+    "placeholder": "Search rooms, people, actions…",
+    "noResults": "No match found",
+    "noResultsFor": "No match found for \"{{query}}\".",
+    "recent": "Recent",
+    "hint": "Type",
+    "hintRooms": "for rooms",
+    "hintPeople": "for people",
+    "hintSpaces": "for spaces",
+    "hotkey": "Hotkey",
+    "categories": {
+      "actions": "Actions",
+      "rooms": "Rooms",
+      "people": "People",
+      "spaces": "Spaces",
+      "settings": "Settings"
+    },
+    "settings": {
+      "general": "General",
+      "account": "Account",
+      "status": "Status",
+      "notifications": "Notifications",
+      "devices": "Devices",
+      "emojisStickers": "Emojis & Stickers",
+      "developerTools": "Developer Tools",
+      "about": "About"
+    },
+    "actions": {
+      "setStatus": "Set status: {{status}}",
+      "clearStatus": "Clear status",
+      "muteRoom": "Mute this room",
+      "unmuteRoom": "Unmute this room",
+      "markAllRead": "Mark all as read",
+      "createRoom": "Create room",
+      "createDm": "Create direct message",
+      "createSpace": "Create space",
+      "logout": "Log out"
+    }
   }
 }

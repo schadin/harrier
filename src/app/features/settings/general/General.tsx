@@ -776,6 +776,22 @@ function Editor() {
   );
 }
 
+function Shortcuts() {
+  return (
+    <Box direction="Column" gap="100">
+      <Text size="L400">Shortcuts</Text>
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
+        <SettingTile
+          title="Command Palette"
+          description={`Search rooms, people and actions, and run commands from the keyboard. Open with ${
+            isMacOS() ? KeySymbol.Command : 'Ctrl'
+          } + K.`}
+        />
+      </SequenceCard>
+    </Box>
+  );
+}
+
 function SelectMessageLayout() {
   const [menuCords, setMenuCords] = useState<RectCords>();
   const [messageLayout, setMessageLayout] = useSetting(settingsAtom, 'messageLayout');
@@ -1233,6 +1249,7 @@ export function General({ requestClose }: GeneralProps) {
               <Desktop />
               <DateAndTime />
               <Editor />
+              <Shortcuts />
               <ReadReceipts />
               <Spaces />
               <Messages />

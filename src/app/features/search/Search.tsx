@@ -12,46 +12,27 @@ import {
   Overlay,
   OverlayCenter,
   Scroll,
+  Spinner,
   Text,
   toRem,
 } from 'folds';
 import React, {
   ChangeEventHandler,
   KeyboardEventHandler,
-  MouseEventHandler,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
-import { isKeyHotkey } from 'is-hotkey';
+import { useTranslation } from 'react-i18next';
 import { useAtom, useAtomValue } from 'jotai';
-import { Room } from 'matrix-js-sdk';
-import { useDirects, useOrphanSpaces, useRooms, useSpaces } from '../../state/hooks/roomList';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
-import { mDirectAtom } from '../../state/mDirectList';
-import { allRoomsAtom } from '../../state/room-list/roomList';
-import {
-  SearchItemStrGetter,
-  useAsyncSearch,
-  UseAsyncSearchOptions,
-} from '../../hooks/useAsyncSearch';
 import { useAllJoinedRoomsSet, useGetRoom } from '../../hooks/useGetRoom';
 import { RoomAvatar, RoomIcon } from '../../components/room-avatar';
-import {
-  getAllParents,
-  getDirectRoomAvatarUrl,
-  getRoomAvatarUrl,
-  guessPerfectParent,
-} from '../../utils/room';
-import { highlightText, makeHighlightRegex } from '../../plugins/react-custom-html-parser';
-import { factoryRoomIdByActivity } from '../../utils/sort';
+import { getDirectRoomAvatarUrl, getRoomAvatarUrl } from '../../utils/room';
 import { nameInitials } from '../../utils/common';
-import { useRoomNavigate } from '../../hooks/useRoomNavigate';
 import { useListFocusIndex } from '../../hooks/useListFocusIndex';
-import { getMxIdLocalPart, getMxIdServer, guessDmRoomUserId } from '../../utils/matrix';
-import { roomToParentsAtom } from '../../state/room/roomToParents';
 import { roomToUnreadAtom } from '../../state/room/roomToUnread';
 import { UnreadBadge, UnreadBadgeCenter } from '../../components/unread-badge';
 import { searchModalAtom } from '../../state/searchModal';
@@ -59,76 +40,111 @@ import { useKeyDown } from '../../hooks/useKeyDown';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { KeySymbol } from '../../utils/key-symbol';
 import { isMacOS } from '../../utils/user-agent';
+import { LogoutDialog } from '../../components/LogoutDialog';
+import {
+  PALETTE_CATEGORY_ORDER,
+  PaletteCategory,
+  PaletteItem,
+  ScoredPaletteItem,
+} from './palette/types';
+import { fuzzyMatch, fuzzyMatchAny, PALETTE_CATEGORY_LIMIT } from './palette/fuzzy';
+import { getRecentPaletteItemIds, pushRecentPaletteItem } from './palette/recent';
+import { usePaletteItems } from './palette/usePaletteItems';
+import { HighlightedText } from './palette/HighlightedText';
 
-enum SearchRoomType {
-  Rooms = '#',
-  Spaces = '*',
-  Directs = '@',
-}
-
-const getSearchPrefixToRoomType = (prefix: string): SearchRoomType | undefined => {
-  if (prefix === '#') return SearchRoomType.Rooms;
-  if (prefix === '*') return SearchRoomType.Spaces;
-  if (prefix === '@') return SearchRoomType.Directs;
-  return undefined;
+const CATEGORY_LABEL_KEYS: Record<PaletteCategory, [string, string]> = {
+  [PaletteCategory.Actions]: ['CommandPalette.categories.actions', 'Actions'],
+  [PaletteCategory.Rooms]: ['CommandPalette.categories.rooms', 'Rooms'],
+  [PaletteCategory.People]: ['CommandPalette.categories.people', 'People'],
+  [PaletteCategory.Spaces]: ['CommandPalette.categories.spaces', 'Spaces'],
+  [PaletteCategory.Settings]: ['CommandPalette.categories.settings', 'Settings'],
 };
 
-const useTopActiveRooms = (
-  searchRoomType: SearchRoomType | undefined,
-  rooms: string[],
-  directs: string[],
-  spaces: string[]
-) => {
-  const mx = useMatrixClient();
-
-  return useMemo(() => {
-    if (searchRoomType === SearchRoomType.Spaces) {
-      return spaces;
-    }
-    if (searchRoomType === SearchRoomType.Directs) {
-      return [...directs].sort(factoryRoomIdByActivity(mx)).slice(0, 20);
-    }
-    if (searchRoomType === SearchRoomType.Rooms) {
-      return [...rooms].sort(factoryRoomIdByActivity(mx)).slice(0, 20);
-    }
-    return [...rooms, ...directs].sort(factoryRoomIdByActivity(mx)).slice(0, 20);
-  }, [mx, rooms, directs, spaces, searchRoomType]);
+type ParsedQuery = {
+  query: string;
+  categories: Set<PaletteCategory> | undefined;
 };
 
-const getDmUserId = (
-  roomId: string,
-  getRoom: (roomId: string) => Room | undefined,
-  myUserId: string
-): string | undefined => {
-  const room = getRoom(roomId);
-  const targetUserId = room && guessDmRoomUserId(room, myUserId);
-  return targetUserId;
+const parseQuery = (rawValue: string): ParsedQuery => {
+  const value = rawValue.trim();
+  const prefix = value.match(/^[#@*]/)?.[0];
+  if (prefix === '#') {
+    return { query: value.slice(1).trim(), categories: new Set([PaletteCategory.Rooms]) };
+  }
+  if (prefix === '*') {
+    return { query: value.slice(1).trim(), categories: new Set([PaletteCategory.Spaces]) };
+  }
+  if (prefix === '@') {
+    return {
+      query: value.slice(1).trim(),
+      categories: new Set([PaletteCategory.People, PaletteCategory.Rooms]),
+    };
+  }
+  return { query: value, categories: undefined };
 };
 
-const useSearchTargetRooms = (
-  searchRoomType: SearchRoomType | undefined,
-  rooms: string[],
-  directs: string[],
-  spaces: string[]
-) =>
-  useMemo(() => {
-    if (searchRoomType === undefined) {
-      return [...rooms, ...directs, ...spaces];
-    }
-    if (searchRoomType === SearchRoomType.Rooms) return rooms;
-    if (searchRoomType === SearchRoomType.Spaces) return spaces;
-    if (searchRoomType === SearchRoomType.Directs) return directs;
+const searchItems = (
+  items: PaletteItem[],
+  { query, categories }: ParsedQuery
+): ScoredPaletteItem[] => {
+  const scored: ScoredPaletteItem[] = [];
+  items.forEach((item) => {
+    if (categories && !categories.has(item.category)) return;
+    // '@' среди комнат оставляет только DM
+    if (
+      categories?.has(PaletteCategory.People) &&
+      item.category === PaletteCategory.Rooms &&
+      !item.dm
+    )
+      return;
 
-    return [];
-  }, [rooms, spaces, directs, searchRoomType]);
+    const best = fuzzyMatchAny(query, [item.title, item.subtitle, ...item.keywords]);
+    if (!best) return;
+    const titleMatch = fuzzyMatch(query, item.title);
+    scored.push({ item, score: best.score, indices: titleMatch?.indices });
+  });
 
-const SEARCH_OPTIONS: UseAsyncSearchOptions = {
-  matchOptions: {
-    contain: true,
-  },
-  normalizeOptions: {
-    ignoreWhitespace: false,
-  },
+  const categoryOrder = (category: PaletteCategory) => PALETTE_CATEGORY_ORDER.indexOf(category);
+  scored.sort((a, b) => {
+    const byCategory = categoryOrder(a.item.category) - categoryOrder(b.item.category);
+    if (byCategory !== 0) return byCategory;
+    return b.score - a.score;
+  });
+
+  const perCategory = new Map<PaletteCategory, number>();
+  return scored.filter(({ item }) => {
+    const count = perCategory.get(item.category) ?? 0;
+    if (count >= PALETTE_CATEGORY_LIMIT) return false;
+    perCategory.set(item.category, count + 1);
+    return true;
+  });
+};
+
+type DefaultResults = {
+  entries: ScoredPaletteItem[];
+  isRecent: boolean;
+};
+
+const getDefaultItems = (items: PaletteItem[]): DefaultResults => {
+  const byId = new Map(items.map((item) => [item.id, item]));
+
+  // история: невалидные элементы (покинутые комнаты, удалённые пресеты)
+  // молча отфильтровываются — их нет среди текущих items
+  const recent = getRecentPaletteItemIds()
+    .map((id) => byId.get(id))
+    .filter((item): item is PaletteItem => !!item)
+    .map((item) => ({ item, score: 0, indices: undefined }));
+
+  if (recent.length > 0) return { entries: recent, isRecent: true };
+
+  // истории нет — показываем действия как отправную точку
+  return {
+    entries: items
+      .filter((item) => item.category === PaletteCategory.Actions)
+      .slice(0, 6)
+      .map((item) => ({ item, score: 0, indices: undefined })),
+    isRecent: false,
+  };
 };
 
 type SearchProps = {
@@ -136,98 +152,74 @@ type SearchProps = {
 };
 export function Search({ requestClose }: SearchProps) {
   const mx = useMatrixClient();
+  const { t } = useTranslation();
   const useAuthentication = useMediaAuthentication();
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { navigateRoom, navigateSpace } = useRoomNavigate();
   const roomToUnread = useAtomValue(roomToUnreadAtom);
 
-  const [searchRoomType, setSearchRoomType] = useState<SearchRoomType>();
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const handleLogout = useCallback(() => setLogoutOpen(true), []);
+
+  const items = usePaletteItems({ onLogout: handleLogout });
 
   const allRoomsSet = useAllJoinedRoomsSet();
   const getRoom = useGetRoom(allRoomsSet);
 
-  const roomToParents = useAtomValue(roomToParentsAtom);
-  const orphanSpaces = useOrphanSpaces(mx, allRoomsAtom, roomToParents);
-  const mDirects = useAtomValue(mDirectAtom);
-  const rooms = useRooms(mx, allRoomsAtom, mDirects);
-  const spaces = useSpaces(mx, allRoomsAtom);
-  const directs = useDirects(mx, allRoomsAtom, mDirects);
+  const [parsedQuery, setParsedQuery] = useState<ParsedQuery>({
+    query: '',
+    categories: undefined,
+  });
 
-  const topActiveRooms = useTopActiveRooms(searchRoomType, rooms, directs, spaces);
-  const targetRooms = useSearchTargetRooms(searchRoomType, rooms, directs, spaces);
+  const defaultResults = useMemo(() => getDefaultItems(items), [items]);
 
-  const getTargetStr: SearchItemStrGetter<string> = useCallback(
-    (roomId: string) => {
-      const roomName = getRoom(roomId)?.name ?? roomId;
-      if (mDirects.has(roomId)) {
-        const targetUserId = getDmUserId(roomId, getRoom, mx.getSafeUserId());
-        const targetUsername = targetUserId && getMxIdLocalPart(targetUserId);
-        if (targetUsername) return [roomName, targetUsername];
-      }
-      return roomName;
-    },
-    [getRoom, mDirects, mx]
+  const results = useMemo(
+    () => (parsedQuery.query === '' ? defaultResults.entries : searchItems(items, parsedQuery)),
+    [items, parsedQuery, defaultResults]
   );
 
-  const [result, search, resetSearch] = useAsyncSearch(targetRooms, getTargetStr, SEARCH_OPTIONS);
-  const roomsToRender = result ? result.items : topActiveRooms;
-  const listFocus = useListFocusIndex(roomsToRender.length, 0);
+  const listFocus = useListFocusIndex(results.length, 0);
 
-  const queryHighlighRegex = result?.query
-    ? makeHighlightRegex(result.query.split(' '))
-    : undefined;
-
-  const openRoomId = (roomId: string, isSpace: boolean) => {
-    if (isSpace) navigateSpace(roomId);
-    else navigateRoom(roomId);
-    requestClose();
-  };
+  const runItem = useCallback(
+    async (scored: ScoredPaletteItem) => {
+      if (busy) return;
+      pushRecentPaletteItem(scored.item.id);
+      const result = scored.item.run();
+      if (result instanceof Promise) {
+        setBusy(true);
+        try {
+          await result;
+        } catch {
+          // ошибка действия — палитру всё равно закрываем
+        }
+        setBusy(false);
+      }
+      if (!scored.item.keepOpen) requestClose();
+    },
+    [busy, requestClose]
+  );
 
   const handleInputChange: ChangeEventHandler<HTMLInputElement> = (evt) => {
     listFocus.reset();
-
-    const target = evt.currentTarget;
-    let value = target.value.trim();
-    const prefix = value.match(/^[#@*]/)?.[0];
-    const searchType = typeof prefix === 'string' && getSearchPrefixToRoomType(prefix);
-    if (searchType) {
-      value = value.slice(1);
-      setSearchRoomType(searchType);
-    } else {
-      setSearchRoomType(undefined);
-    }
-
-    if (value === '') {
-      resetSearch();
-      return;
-    }
-    search(value);
+    setParsedQuery(parseQuery(evt.currentTarget.value));
   };
 
   const handleInputKeyDown: KeyboardEventHandler<HTMLInputElement> = (evt) => {
-    const roomId = roomsToRender[listFocus.index];
-    if (isKeyHotkey('enter', evt) && roomId) {
-      openRoomId(roomId, spaces.includes(roomId));
+    if (evt.key === 'Enter' && results[listFocus.index]) {
+      evt.preventDefault();
+      runItem(results[listFocus.index]);
       return;
     }
-    if (isKeyHotkey('arrowdown', evt)) {
+    if (evt.key === 'ArrowDown') {
       evt.preventDefault();
       listFocus.next();
       return;
     }
-    if (isKeyHotkey('arrowup', evt)) {
+    if (evt.key === 'ArrowUp') {
       evt.preventDefault();
       listFocus.previous();
     }
-  };
-
-  const handleRoomClick: MouseEventHandler<HTMLButtonElement> = (evt) => {
-    const target = evt.currentTarget;
-    const roomId = target.getAttribute('data-room-id');
-    const isSpace = target.getAttribute('data-space') === 'true';
-    if (!roomId) return;
-    openRoomId(roomId, isSpace);
   };
 
   useEffect(() => {
@@ -240,6 +232,27 @@ export function Search({ requestClose }: SearchProps) {
       });
     }
   }, [listFocus.index]);
+
+  if (logoutOpen) {
+    return (
+      <Overlay open>
+        <OverlayCenter>
+          <FocusTrap
+            focusTrapOptions={{
+              returnFocusOnDeactivate: false,
+              allowOutsideClick: true,
+              clickOutsideDeactivates: true,
+              onDeactivate: requestClose,
+            }}
+          >
+            <LogoutDialog handleClose={requestClose} />
+          </FocusTrap>
+        </OverlayCenter>
+      </Overlay>
+    );
+  }
+
+  let lastCategory: PaletteCategory | 'recent' | undefined;
 
   return (
     <Overlay open>
@@ -269,14 +282,20 @@ export function Search({ requestClose }: SearchProps) {
                 variant="Background"
                 radii="400"
                 outlined
-                placeholder="Search"
-                before={<Icon size="200" src={Icons.Search} />}
+                placeholder={t('CommandPalette.placeholder', 'Search rooms, people, actions…')}
+                before={
+                  busy ? (
+                    <Spinner size="200" variant="Secondary" />
+                  ) : (
+                    <Icon size="200" src={Icons.Search} />
+                  )
+                }
                 onChange={handleInputChange}
                 onKeyDown={handleInputKeyDown}
               />
             </Box>
             <Box grow="Yes">
-              {roomsToRender.length === 0 && (
+              {results.length === 0 && (
                 <Box
                   style={{ paddingTop: config.space.S700 }}
                   grow="Yes"
@@ -286,120 +305,108 @@ export function Search({ requestClose }: SearchProps) {
                   gap="100"
                 >
                   <Text size="H6" align="Center">
-                    {result ? 'No Match Found' : 'No Rooms'}
+                    {t('CommandPalette.noResults', 'No match found')}
                   </Text>
                   <Text size="T200" align="Center">
-                    {result
-                      ? `No match found for "${result.query}".`
-                      : `You do not have any Rooms to display yet.`}
+                    {t('CommandPalette.noResultsFor', 'No match found for "{{query}}".', {
+                      query: parsedQuery.query,
+                    })}
                   </Text>
                 </Box>
               )}
-              {roomsToRender.length > 0 && (
+              {results.length > 0 && (
                 <Scroll ref={scrollRef} size="300" hideTrack>
                   <div style={{ padding: config.space.S400, paddingRight: config.space.S200 }}>
-                    {roomsToRender.map((roomId, index) => {
-                      const room = getRoom(roomId);
-                      if (!room) return null;
+                    {results.map((scored, index) => {
+                      const { item } = scored;
+                      const group: PaletteCategory | 'recent' =
+                        parsedQuery.query === '' && defaultResults.isRecent
+                          ? 'recent'
+                          : item.category;
+                      const showHeader = group !== lastCategory;
+                      lastCategory = group;
 
-                      const dm = mDirects.has(roomId);
-                      const dmUserId = dm && getDmUserId(roomId, getRoom, mx.getSafeUserId());
-                      const dmUsername = dmUserId && getMxIdLocalPart(dmUserId);
-                      const dmUserServer = dmUserId && getMxIdServer(dmUserId);
-
-                      const allParents = getAllParents(roomToParents, roomId);
-                      const orphanParents =
-                        allParents && orphanSpaces.filter((o) => allParents.has(o));
-                      const perfectOrphanParent =
-                        orphanParents && guessPerfectParent(mx, roomId, orphanParents);
-
-                      const exactParents = roomToParents.get(roomId);
-                      const perfectParent =
-                        exactParents && guessPerfectParent(mx, roomId, Array.from(exactParents));
-
-                      const unread = roomToUnread.get(roomId);
+                      const room = item.roomId ? getRoom(item.roomId) : undefined;
+                      const unread = item.roomId ? roomToUnread.get(item.roomId) : undefined;
 
                       return (
-                        <MenuItem
-                          key={roomId}
-                          as="button"
-                          data-focus-index={index}
-                          data-room-id={roomId}
-                          data-space={room.isSpaceRoom()}
-                          onClick={handleRoomClick}
-                          variant={listFocus.index === index ? 'Primary' : 'Surface'}
-                          aria-pressed={listFocus.index === index}
-                          radii="400"
-                          after={
-                            <Box gap="100">
-                              {dmUserServer && (
-                                <Text size="T200" priority="300" truncate>
-                                  <b>{dmUserServer}</b>
-                                </Text>
-                              )}
-                              {!dm && perfectOrphanParent && (
-                                <Text size="T200" priority="300" truncate>
-                                  <b>{getRoom(perfectOrphanParent)?.name ?? perfectOrphanParent}</b>
-                                </Text>
-                              )}
-                              {unread && (
+                        <React.Fragment key={item.id}>
+                          {showHeader && (
+                            <Box
+                              style={{
+                                padding: `${config.space.S200} ${config.space.S200} ${config.space.S100}`,
+                              }}
+                            >
+                              <Text size="T200" priority="300">
+                                {group === 'recent'
+                                  ? t('CommandPalette.recent', 'Recent')
+                                  : t(...CATEGORY_LABEL_KEYS[group])}
+                              </Text>
+                            </Box>
+                          )}
+                          <MenuItem
+                            as="button"
+                            data-focus-index={index}
+                            data-item-id={item.id}
+                            onClick={() => runItem(scored)}
+                            variant={listFocus.index === index ? 'Primary' : 'Surface'}
+                            aria-pressed={listFocus.index === index}
+                            radii="400"
+                            after={
+                              unread && (
                                 <UnreadBadgeCenter>
                                   <UnreadBadge
                                     highlight={unread.highlight > 0}
                                     count={unread.total}
                                   />
                                 </UnreadBadgeCenter>
+                              )
+                            }
+                            before={
+                              room ? (
+                                <Avatar size="200" radii={item.dm ? '400' : '300'}>
+                                  {item.dm || room.isSpaceRoom() ? (
+                                    <RoomAvatar
+                                      roomId={room.roomId}
+                                      src={
+                                        item.dm
+                                          ? getDirectRoomAvatarUrl(mx, room, 32, useAuthentication)
+                                          : getRoomAvatarUrl(mx, room, 32, useAuthentication)
+                                      }
+                                      alt={room.name}
+                                      renderFallback={() => (
+                                        <Text as="span" size="H6">
+                                          {nameInitials(room.name)}
+                                        </Text>
+                                      )}
+                                    />
+                                  ) : (
+                                    <RoomIcon
+                                      size="100"
+                                      joinRule={room.getJoinRule()}
+                                      roomType={room.getType()}
+                                    />
+                                  )}
+                                </Avatar>
+                              ) : (
+                                <Avatar size="200" radii="300">
+                                  <Icon size="100" src={item.icon ?? Icons.Search} />
+                                </Avatar>
+                              )
+                            }
+                          >
+                            <Box grow="Yes" alignItems="Center" gap="100">
+                              <Text size="T400" truncate>
+                                <HighlightedText text={item.title} indices={scored.indices} />
+                              </Text>
+                              {item.subtitle && (
+                                <Text as="span" size="T200" priority="300" truncate>
+                                  {item.subtitle}
+                                </Text>
                               )}
                             </Box>
-                          }
-                          before={
-                            <Avatar size="200" radii={dm ? '400' : '300'}>
-                              {dm || room.isSpaceRoom() ? (
-                                <RoomAvatar
-                                  roomId={room.roomId}
-                                  src={
-                                    dm
-                                      ? getDirectRoomAvatarUrl(mx, room, 32, useAuthentication)
-                                      : getRoomAvatarUrl(mx, room, 32, useAuthentication)
-                                  }
-                                  alt={room.name}
-                                  renderFallback={() => (
-                                    <Text as="span" size="H6">
-                                      {nameInitials(room.name)}
-                                    </Text>
-                                  )}
-                                />
-                              ) : (
-                                <RoomIcon
-                                  size="100"
-                                  joinRule={room.getJoinRule()}
-                                  roomType={room.getType()}
-                                />
-                              )}
-                            </Avatar>
-                          }
-                        >
-                          <Box grow="Yes" alignItems="Center" gap="100">
-                            <Text size="T400" truncate>
-                              {queryHighlighRegex
-                                ? highlightText(queryHighlighRegex, [room.name])
-                                : room.name}
-                            </Text>
-                            {dmUsername && (
-                              <Text as="span" size="T200" priority="300" truncate>
-                                @
-                                {queryHighlighRegex
-                                  ? highlightText(queryHighlighRegex, [dmUsername])
-                                  : dmUsername}
-                              </Text>
-                            )}
-                            {!dm && perfectParent && perfectParent !== perfectOrphanParent && (
-                              <Text size="T200" priority="300" truncate>
-                                — {getRoom(perfectParent)?.name ?? perfectParent}
-                              </Text>
-                            )}
-                          </Box>
-                        </MenuItem>
+                          </MenuItem>
+                        </React.Fragment>
                       );
                     })}
                   </div>
@@ -409,8 +416,12 @@ export function Search({ requestClose }: SearchProps) {
             <Line size="300" />
             <Box shrink="No" justifyContent="Center" style={{ padding: config.space.S200 }}>
               <Text size="T200" priority="300">
-                Type <b>#</b> for rooms, <b>@</b> for DMs and <b>*</b> for spaces. Hotkey:{' '}
-                <b>{isMacOS() ? KeySymbol.Command : 'Ctrl'} + k</b>
+                {t('CommandPalette.hint', 'Type')} <b>#</b>{' '}
+                {t('CommandPalette.hintRooms', 'for rooms')}, <b>@</b>{' '}
+                {t('CommandPalette.hintPeople', 'for people')}, <b>*</b>{' '}
+                {t('CommandPalette.hintSpaces', 'for spaces')}.{' '}
+                {t('CommandPalette.hotkey', 'Hotkey')}:{' '}
+                <b>{isMacOS() ? KeySymbol.Command : 'Ctrl'} + K</b>
               </Text>
             </Box>
           </Modal>
@@ -420,6 +431,13 @@ export function Search({ requestClose }: SearchProps) {
   );
 }
 
+/**
+ * Шорткат по физической клавише (event.code), а не по символу (event.key) —
+ * работает в любой раскладке клавиатуры (например, Ctrl+K в русской раскладке).
+ */
+const isModK = (event: KeyboardEvent): boolean =>
+  (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === 'KeyK';
+
 export function SearchModalRenderer() {
   const [opened, setOpen] = useAtom(searchModalAtom);
 
@@ -427,7 +445,7 @@ export function SearchModalRenderer() {
     window,
     useCallback(
       (event) => {
-        if (isKeyHotkey('mod+k', event)) {
+        if (isModK(event)) {
           event.preventDefault();
           if (opened) {
             setOpen(false);
