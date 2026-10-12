@@ -854,7 +854,7 @@ export const Message = as<'div', MessageProps>(
                 hour24Clock={hour24Clock}
                 dateFormatString={dateFormatString}
               />
-              <MessageStatus room={room} mEvent={mEvent} always />
+              <MessageStatus room={room} mEvent={mEvent} />
             </>
           )}
         </Box>
@@ -905,7 +905,7 @@ export const Message = as<'div', MessageProps>(
             hour24Clock
           )}`}
         />
-        <MessageStatus room={room} mEvent={mEvent} always />
+        <MessageStatus room={room} mEvent={mEvent} />
       </Box>
     );
 
