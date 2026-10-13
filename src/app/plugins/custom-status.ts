@@ -143,34 +143,84 @@ export const clearCustomStatus = (mx: MatrixClient): Promise<void> => {
   return mx.setPresence({ presence: 'online', status_msg: '' });
 };
 
-export const restoreCustomStatus = (mx: MatrixClient): void => {
-  const saved = getActiveStatusMsg();
-  if (!saved) return;
+export type StatusRestoreAction =
+  | { type: 'noop' }
+  | { type: 'show-server'; statusMsg: string }
+  | { type: 'adopt-server'; statusMsg: string }
+  | { type: 'restore'; statusMsg: string };
 
-  const userId = mx.getUserId();
-  const user = userId ? mx.getUser(userId) : undefined;
-  if (!user) return;
-
-  // решение принимается только при известном серверном значении:
-  // undefined означает, что собственное m.presence ещё не приходило
-  const serverMsg = user.presenceStatusMsg;
-  if (serverMsg === undefined) return;
-
-  // сервер уже вернул актуальный статус (например, сменённый с другого
-  // устройства) — приоритет у сервера, локальный кэш синхронизируется
-  if (serverMsg && serverMsg !== saved) {
-    saveActiveStatusMsg(serverMsg);
-    return;
+/**
+ * Матрица решений восстановления. `serverMsg` — серверное значение, полученное
+ * явным presence-запросом (`undefined` — сервер вернул пустой статус), `saved` —
+ * локальный кэш активного статуса.
+ */
+export const decideStatusRestore = (
+  serverMsg: string | undefined,
+  saved: string | undefined
+): StatusRestoreAction => {
+  // значения совпали (в том числе оба пусты) — отправлять на сервер нечего,
+  // но непустое серверное значение нужно показать в UI
+  if (serverMsg === saved) {
+    return serverMsg ? { type: 'show-server', statusMsg: serverMsg } : { type: 'noop' };
   }
 
-  // статус совпадает — отправлять на сервер нечего
-  if (serverMsg === saved) return;
+  // сервер новее (например, статус сменён с другого устройства) — приоритет
+  // у сервера, локальный кэш синхронизируется
+  if (serverMsg) return { type: 'adopt-server', statusMsg: serverMsg };
 
-  // серверное значение пустое (утеряно/истекло) — восстанавливаем локальный
-  // статус, сохраняя текущее presence пользователя
-  updateLocalPresence(mx, saved);
-  mx.setPresence({
-    presence: (user.presence as SetPresence) ?? SetPresence.Online,
-    status_msg: saved,
-  }).catch(() => undefined);
+  // локального значения нет — восстанавливать нечего
+  if (!saved) return { type: 'noop' };
+
+  // серверное значение пустое (утеряно/истекло) — восстанавливаем локальное
+  return { type: 'restore', statusMsg: saved };
+};
+
+export type StatusRestoreResult = 'done' | 'retry';
+
+export const restoreCustomStatus = async (mx: MatrixClient): Promise<StatusRestoreResult> => {
+  const userId = mx.getUserId();
+  if (!userId) return 'done';
+
+  const saved = getActiveStatusMsg();
+
+  // авторитетный источник серверного значения — явный запрос presence;
+  // собственное m.presence не подходит: у Synapse статус не переживает offline,
+  // а matrix-js-sdk не различает «пустой status_msg» и «события не было»
+  let serverMsg: string | undefined;
+  try {
+    const response = await mx.getPresence(userId);
+    serverMsg = response.status_msg || undefined;
+  } catch {
+    // недоступность сервера — не признак пустого статуса; нужен повтор
+    return 'retry';
+  }
+
+  // пользователь изменил или снял статус, пока шёл запрос — его выбор важнее
+  if (getActiveStatusMsg() !== saved) return 'done';
+
+  const action = decideStatusRestore(serverMsg, saved);
+
+  switch (action.type) {
+    case 'show-server':
+      updateLocalPresence(mx, action.statusMsg);
+      break;
+    case 'adopt-server':
+      saveActiveStatusMsg(action.statusMsg);
+      updateLocalPresence(mx, action.statusMsg);
+      break;
+    case 'restore': {
+      const user = mx.getUser(userId);
+      updateLocalPresence(mx, action.statusMsg);
+      mx.setPresence({
+        presence: (user?.presence as SetPresence) ?? SetPresence.Online,
+        status_msg: action.statusMsg,
+      }).catch(() => undefined);
+      break;
+    }
+    case 'noop':
+    default:
+      break;
+  }
+
+  return 'done';
 };

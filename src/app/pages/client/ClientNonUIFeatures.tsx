@@ -1,15 +1,7 @@
 import { useAtomValue } from 'jotai';
 import React, { ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  MatrixEvent,
-  MatrixEventEvent,
-  Room,
-  RoomEvent,
-  RoomEventHandlerMap,
-  User,
-  UserEvent,
-} from 'matrix-js-sdk';
+import { MatrixEvent, MatrixEventEvent, Room, RoomEvent, RoomEventHandlerMap } from 'matrix-js-sdk';
 
 import { roomToUnreadAtom, unreadEqual, unreadInfoToUnread } from '../../state/room/roomToUnread';
 import LogoSVG from '../../../../public/res/svg/cinny.svg';
@@ -54,42 +46,42 @@ import { updateTrayIcon } from '../../utils/trayIcon';
 import { useRestoreBackupOnStartup } from '../../hooks/useRestoreBackupOnStartup';
 import { useRetryDecryptionOnKeyArrival } from '../../hooks/useRetryDecryptionOnKeyArrival';
 
-const PRESENCE_WAIT_TIMEOUT_MS = 15_000;
+// задержки повторов запроса presence: покрывают старт приложения до поднятия
+// сети (автозапуск при загрузке системы) без одноразового таймаута
+const STATUS_RESTORE_RETRY_DELAYS_MS = [1_000, 3_000, 10_000, 30_000, 60_000];
 
 function CustomStatusRestore() {
   const mx = useMatrixClient();
 
   useEffect(() => {
-    let settled = false;
+    let disposed = false;
     let timer: number | undefined;
-    const userId = mx.getUserId();
-    const user = userId ? mx.getUser(userId) : undefined;
+    let attempt = 0;
 
-    // решение о восстановлении — только после прихода собственного m.presence
-    function handlePresence(_event: MatrixEvent | undefined, u: User) {
-      if (u.presenceStatusMsg !== undefined) settle();
+    function schedule() {
+      const delay =
+        STATUS_RESTORE_RETRY_DELAYS_MS[
+          Math.min(attempt, STATUS_RESTORE_RETRY_DELAYS_MS.length - 1)
+        ];
+      attempt += 1;
+      timer = window.setTimeout(run, delay);
     }
 
-    function settle() {
-      if (settled) return;
-      settled = true;
-      user?.removeListener(UserEvent.Presence, handlePresence);
-      window.clearTimeout(timer);
-      restoreCustomStatus(mx);
+    function run() {
+      if (disposed) return;
+      restoreCustomStatus(mx)
+        .then((result) => {
+          if (!disposed && result === 'retry') schedule();
+        })
+        .catch(() => {
+          if (!disposed) schedule();
+        });
     }
 
-    timer = window.setTimeout(settle, PRESENCE_WAIT_TIMEOUT_MS);
-
-    if (user && user.presenceStatusMsg !== undefined) {
-      settle();
-      return undefined;
-    }
-
-    user?.on(UserEvent.Presence, handlePresence);
+    run();
 
     return () => {
-      settled = true;
-      user?.removeListener(UserEvent.Presence, handlePresence);
+      disposed = true;
       window.clearTimeout(timer);
     };
   }, [mx]);
