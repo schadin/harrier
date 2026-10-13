@@ -214,9 +214,10 @@ const useSettingsItems = (): PaletteItem[] => {
 
 export type PaletteActionHandlers = {
   onLogout: () => void;
+  onShowUnread: () => void;
 };
 
-const useActionItems = ({ onLogout }: PaletteActionHandlers): PaletteItem[] => {
+const useActionItems = ({ onLogout, onShowUnread }: PaletteActionHandlers): PaletteItem[] => {
   const mx = useMatrixClient();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -324,6 +325,15 @@ const useActionItems = ({ onLogout }: PaletteActionHandlers): PaletteItem[] => {
       keepOpen: true,
       run: () => onLogout(),
     });
+    items.push({
+      id: 'action:showUnread',
+      category: PaletteCategory.Actions,
+      title: t('CommandPalette.actions.unread', 'Show unread chats'),
+      keywords: ['unread', 'badge', 'непрочитанные', 'входящие'],
+      icon: Icons.MessageUnread,
+      keepOpen: true,
+      run: () => onShowUnread(),
+    });
 
     return items;
   }, [
@@ -340,6 +350,7 @@ const useActionItems = ({ onLogout }: PaletteActionHandlers): PaletteItem[] => {
     openCreateRoomModal,
     openCreateSpaceModal,
     onLogout,
+    onShowUnread,
   ]);
 };
 

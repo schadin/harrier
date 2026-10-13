@@ -50,6 +50,7 @@ import {
 import { fuzzyMatch, fuzzyMatchAny, PALETTE_CATEGORY_LIMIT } from './palette/fuzzy';
 import { getRecentPaletteItemIds, pushRecentPaletteItem } from './palette/recent';
 import { usePaletteItems } from './palette/usePaletteItems';
+import { UnreadPreviewLabels, buildUnreadPaletteItems, matchUnreadItem } from './palette/unread';
 import { HighlightedText } from './palette/HighlightedText';
 
 const CATEGORY_LABEL_KEYS: Record<PaletteCategory, [string, string]> = {
@@ -160,9 +161,9 @@ export function Search({ requestClose }: SearchProps) {
 
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [unreadMode, setUnreadMode] = useState(false);
+  const [inputValue, setInputValue] = useState('');
   const handleLogout = useCallback(() => setLogoutOpen(true), []);
-
-  const items = usePaletteItems({ onLogout: handleLogout });
 
   const allRoomsSet = useAllJoinedRoomsSet();
   const getRoom = useGetRoom(allRoomsSet);
@@ -172,12 +173,36 @@ export function Search({ requestClose }: SearchProps) {
     categories: undefined,
   });
 
+  const handleShowUnread = useCallback(() => {
+    setUnreadMode(true);
+    setInputValue('');
+    setParsedQuery({ query: '', categories: undefined });
+  }, []);
+
+  const items = usePaletteItems({ onLogout: handleLogout, onShowUnread: handleShowUnread });
+
+  const unreadPreviewLabels = useMemo<UnreadPreviewLabels>(
+    () => ({
+      image: t('CommandPalette.unreadPreview.image', '[Photo]'),
+      video: t('CommandPalette.unreadPreview.video', '[Video]'),
+      audio: t('CommandPalette.unreadPreview.audio', '[Audio]'),
+      file: t('CommandPalette.unreadPreview.file', '[File]'),
+      sticker: t('CommandPalette.unreadPreview.sticker', '[Sticker]'),
+      redacted: t('CommandPalette.unreadPreview.redacted', '[Deleted message]'),
+    }),
+    [t]
+  );
+
   const defaultResults = useMemo(() => getDefaultItems(items), [items]);
 
-  const results = useMemo(
-    () => (parsedQuery.query === '' ? defaultResults.entries : searchItems(items, parsedQuery)),
-    [items, parsedQuery, defaultResults]
-  );
+  const results = useMemo(() => {
+    if (unreadMode) {
+      const unreadItems = buildUnreadPaletteItems(items, mx, roomToUnread, unreadPreviewLabels);
+      if (parsedQuery.query === '') return unreadItems;
+      return unreadItems.filter((scored) => matchUnreadItem(scored.item, parsedQuery.query));
+    }
+    return parsedQuery.query === '' ? defaultResults.entries : searchItems(items, parsedQuery);
+  }, [items, mx, roomToUnread, unreadPreviewLabels, unreadMode, parsedQuery, defaultResults]);
 
   const listFocus = useListFocusIndex(results.length, 0);
 
@@ -202,7 +227,9 @@ export function Search({ requestClose }: SearchProps) {
 
   const handleInputChange: ChangeEventHandler<HTMLInputElement> = (evt) => {
     listFocus.reset();
-    setParsedQuery(parseQuery(evt.currentTarget.value));
+    const { value } = evt.currentTarget;
+    setInputValue(value);
+    setParsedQuery(parseQuery(value));
   };
 
   const handleInputKeyDown: KeyboardEventHandler<HTMLInputElement> = (evt) => {
@@ -219,6 +246,10 @@ export function Search({ requestClose }: SearchProps) {
     if (evt.key === 'ArrowUp') {
       evt.preventDefault();
       listFocus.previous();
+      return;
+    }
+    if (unreadMode && evt.key === 'Backspace' && inputValue === '') {
+      setUnreadMode(false);
     }
   };
 
@@ -252,6 +283,12 @@ export function Search({ requestClose }: SearchProps) {
     );
   }
 
+  const renderInputBefore = () => {
+    if (busy) return <Spinner size="200" variant="Secondary" />;
+    if (unreadMode) return <Icon size="200" src={Icons.MessageUnread} />;
+    return <Icon size="200" src={Icons.Search} />;
+  };
+
   let lastCategory: PaletteCategory | 'recent' | undefined;
 
   return (
@@ -282,14 +319,13 @@ export function Search({ requestClose }: SearchProps) {
                 variant="Background"
                 radii="400"
                 outlined
-                placeholder={t('CommandPalette.placeholder', 'Search rooms, people, actions…')}
-                before={
-                  busy ? (
-                    <Spinner size="200" variant="Secondary" />
-                  ) : (
-                    <Icon size="200" src={Icons.Search} />
-                  )
+                value={inputValue}
+                placeholder={
+                  unreadMode
+                    ? t('CommandPalette.unreadPlaceholder', 'Unread chats')
+                    : t('CommandPalette.placeholder', 'Search rooms, people, actions…')
                 }
+                before={renderInputBefore()}
                 onChange={handleInputChange}
                 onKeyDown={handleInputKeyDown}
               />
@@ -305,12 +341,16 @@ export function Search({ requestClose }: SearchProps) {
                   gap="100"
                 >
                   <Text size="H6" align="Center">
-                    {t('CommandPalette.noResults', 'No match found')}
+                    {unreadMode
+                      ? t('CommandPalette.noUnread', 'No unread chats')
+                      : t('CommandPalette.noResults', 'No match found')}
                   </Text>
                   <Text size="T200" align="Center">
-                    {t('CommandPalette.noResultsFor', 'No match found for "{{query}}".', {
-                      query: parsedQuery.query,
-                    })}
+                    {unreadMode
+                      ? t('CommandPalette.noUnreadDescription', 'All your chats are read.')
+                      : t('CommandPalette.noResultsFor', 'No match found for "{{query}}".', {
+                          query: parsedQuery.query,
+                        })}
                   </Text>
                 </Box>
               )}
@@ -395,13 +435,20 @@ export function Search({ requestClose }: SearchProps) {
                               )
                             }
                           >
-                            <Box grow="Yes" alignItems="Center" gap="100">
-                              <Text size="T400" truncate>
-                                <HighlightedText text={item.title} indices={scored.indices} />
-                              </Text>
-                              {item.subtitle && (
-                                <Text as="span" size="T200" priority="300" truncate>
-                                  {item.subtitle}
+                            <Box grow="Yes" direction="Column">
+                              <Box alignItems="Center" gap="100">
+                                <Text size="T400" truncate>
+                                  <HighlightedText text={item.title} indices={scored.indices} />
+                                </Text>
+                                {item.subtitle && (
+                                  <Text as="span" size="T200" priority="300" truncate>
+                                    {item.subtitle}
+                                  </Text>
+                                )}
+                              </Box>
+                              {item.preview && (
+                                <Text size="T200" priority="300" truncate>
+                                  {item.preview}
                                 </Text>
                               )}
                             </Box>
@@ -416,12 +463,21 @@ export function Search({ requestClose }: SearchProps) {
             <Line size="300" />
             <Box shrink="No" justifyContent="Center" style={{ padding: config.space.S200 }}>
               <Text size="T200" priority="300">
-                {t('CommandPalette.hint', 'Type')} <b>#</b>{' '}
-                {t('CommandPalette.hintRooms', 'for rooms')}, <b>@</b>{' '}
-                {t('CommandPalette.hintPeople', 'for people')}, <b>*</b>{' '}
-                {t('CommandPalette.hintSpaces', 'for spaces')}.{' '}
-                {t('CommandPalette.hotkey', 'Hotkey')}:{' '}
-                <b>{isMacOS() ? KeySymbol.Command : 'Ctrl'} + K</b>
+                {unreadMode ? (
+                  <>
+                    {t('CommandPalette.unreadFooter', 'Unread chats')} —{' '}
+                    {t('CommandPalette.unreadFooterHint', 'Backspace to go back, Esc to close')}
+                  </>
+                ) : (
+                  <>
+                    {t('CommandPalette.hint', 'Type')} <b>#</b>{' '}
+                    {t('CommandPalette.hintRooms', 'for rooms')}, <b>@</b>{' '}
+                    {t('CommandPalette.hintPeople', 'for people')}, <b>*</b>{' '}
+                    {t('CommandPalette.hintSpaces', 'for spaces')}.{' '}
+                    {t('CommandPalette.hotkey', 'Hotkey')}:{' '}
+                    <b>{isMacOS() ? KeySymbol.Command : 'Ctrl'} + P</b>
+                  </>
+                )}
               </Text>
             </Box>
           </Modal>
@@ -433,10 +489,10 @@ export function Search({ requestClose }: SearchProps) {
 
 /**
  * Шорткат по физической клавише (event.code), а не по символу (event.key) —
- * работает в любой раскладке клавиатуры (например, Ctrl+K в русской раскладке).
+ * работает в любой раскладке клавиатуры (например, Ctrl+P в русской раскладке).
  */
-const isModK = (event: KeyboardEvent): boolean =>
-  (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === 'KeyK';
+const isPaletteHotkey = (event: KeyboardEvent): boolean =>
+  (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === 'KeyP';
 
 export function SearchModalRenderer() {
   const [opened, setOpen] = useAtom(searchModalAtom);
@@ -445,7 +501,7 @@ export function SearchModalRenderer() {
     window,
     useCallback(
       (event) => {
-        if (isModK(event)) {
+        if (isPaletteHotkey(event)) {
           event.preventDefault();
           if (opened) {
             setOpen(false);

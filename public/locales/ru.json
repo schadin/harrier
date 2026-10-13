@@ -100,7 +100,21 @@
       "createRoom": "Создать комнату",
       "createDm": "Создать личный чат",
       "createSpace": "Создать пространство",
-      "logout": "Выйти"
+      "logout": "Выйти",
+      "unread": "Показать непрочитанные чаты"
+    },
+    "unreadPlaceholder": "Непрочитанные чаты",
+    "noUnread": "Нет непрочитанных чатов",
+    "noUnreadDescription": "Все чаты прочитаны.",
+    "unreadFooter": "Непрочитанные чаты",
+    "unreadFooterHint": "Backspace — назад, Esc — закрыть",
+    "unreadPreview": {
+      "image": "[Фото]",
+      "video": "[Видео]",
+      "audio": "[Аудио]",
+      "file": "[Файл]",
+      "sticker": "[Стикер]",
+      "redacted": "[Сообщение удалено]"
     }
   }
 }

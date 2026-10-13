@@ -785,7 +785,7 @@ function Shortcuts() {
           title="Command Palette"
           description={`Search rooms, people and actions, and run commands from the keyboard. Open with ${
             isMacOS() ? KeySymbol.Command : 'Ctrl'
-          } + K.`}
+          } + P.`}
         />
       </SequenceCard>
     </Box>

@@ -61,7 +61,21 @@
       "createRoom": "Raum erstellen",
       "createDm": "Direktnachricht erstellen",
       "createSpace": "Space erstellen",
-      "logout": "Abmelden"
+      "logout": "Abmelden",
+      "unread": "Ungelesene Chats anzeigen"
+    },
+    "unreadPlaceholder": "Ungelesene Chats",
+    "noUnread": "Keine ungelesenen Chats",
+    "noUnreadDescription": "Alle deine Chats sind gelesen.",
+    "unreadFooter": "Ungelesene Chats",
+    "unreadFooterHint": "Backspace für Zurück, Esc zum Schließen",
+    "unreadPreview": {
+      "image": "[Foto]",
+      "video": "[Video]",
+      "audio": "[Audio]",
+      "file": "[Datei]",
+      "sticker": "[Sticker]",
+      "redacted": "[Gelöschte Nachricht]"
     }
   }
 }

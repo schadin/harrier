@@ -23,6 +23,8 @@ export type PaletteItem = {
   subtitle?: string;
   /** дополнительные строки для поиска (алиас, roomId, MXID, EN-название) */
   keywords: string[];
+  /** строка превью (например, первое непрочитанное сообщение) */
+  preview?: string;
   icon?: IconSrc;
   /** комната для аватара (комнаты, спейсы, DM) */
   roomId?: string;

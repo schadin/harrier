@@ -105,7 +105,21 @@
       "createRoom": "Create room",
       "createDm": "Create direct message",
       "createSpace": "Create space",
-      "logout": "Log out"
+      "logout": "Log out",
+      "unread": "Show unread chats"
+    },
+    "unreadPlaceholder": "Unread chats",
+    "noUnread": "No unread chats",
+    "noUnreadDescription": "All your chats are read.",
+    "unreadFooter": "Unread chats",
+    "unreadFooterHint": "Backspace to go back, Esc to close",
+    "unreadPreview": {
+      "image": "[Photo]",
+      "video": "[Video]",
+      "audio": "[Audio]",
+      "file": "[File]",
+      "sticker": "[Sticker]",
+      "redacted": "[Deleted message]"
     }
   }
 }
