@@ -189,6 +189,7 @@ export function Search({ requestClose }: SearchProps) {
       file: t('CommandPalette.unreadPreview.file', '[File]'),
       sticker: t('CommandPalette.unreadPreview.sticker', '[Sticker]'),
       redacted: t('CommandPalette.unreadPreview.redacted', '[Deleted message]'),
+      encrypted: t('CommandPalette.unreadPreview.encrypted', '[Encrypted message]'),
     }),
     [t]
   );

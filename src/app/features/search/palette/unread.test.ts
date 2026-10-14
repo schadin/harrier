@@ -11,6 +11,7 @@ const labels = {
   file: '[File]',
   sticker: '[Sticker]',
   redacted: '[Deleted message]',
+  encrypted: '[Encrypted message]',
 };
 
 type FakeEvent = {
@@ -18,6 +19,7 @@ type FakeEvent = {
   type: string;
   sender?: string;
   content?: Record<string, unknown>;
+  decryptionFailure?: boolean;
 };
 
 const makeRoom = (
@@ -34,6 +36,8 @@ const makeRoom = (
         getSender: () => ev.sender,
         getContent: () => ev.content ?? {},
         isRedacted: () => false,
+        isDecryptionFailure: () => ev.decryptionFailure ?? false,
+        getRelation: () => undefined,
       })),
   }),
   getMember: (userId: string) => (members[userId] ? { name: members[userId] } : undefined),
@@ -132,6 +136,123 @@ describe('getUnreadPreview через buildUnreadPaletteItems', () => {
       labels
     );
     expect(entry.item.preview).toBe('bob: First');
+  });
+
+  it('пропускает свои сообщения и берёт первое входящее', () => {
+    const mx = makeMx({
+      '!a:example.org': makeRoom(
+        [
+          {
+            id: 'e1',
+            type: 'm.room.message',
+            sender: '@me:example.org',
+            content: { body: 'My own' },
+          },
+          {
+            id: 'e2',
+            type: 'm.room.message',
+            sender: '@al:example.org',
+            content: { body: 'Reply' },
+          },
+        ],
+        'e0',
+        { '@al:example.org': 'Al' }
+      ),
+    });
+    const roomToUnread: RoomToUnread = new Map([
+      ['!a:example.org', { total: 1, highlight: 0, from: null }],
+    ]);
+
+    const [entry] = buildUnreadPaletteItems(
+      [makeRoomItem('!a:example.org')],
+      mx,
+      roomToUnread,
+      labels
+    );
+    expect(entry.item.preview).toBe('Al: Reply');
+  });
+
+  it('только свои сообщения после receipt — без превью', () => {
+    const mx = makeMx({
+      '!a:example.org': makeRoom(
+        [
+          {
+            id: 'e2',
+            type: 'm.room.message',
+            sender: '@me:example.org',
+            content: { body: 'Mine' },
+          },
+        ],
+        'e1'
+      ),
+    });
+    const roomToUnread: RoomToUnread = new Map([
+      ['!a:example.org', { total: 1, highlight: 0, from: null }],
+    ]);
+
+    const [entry] = buildUnreadPaletteItems(
+      [makeRoomItem('!a:example.org')],
+      mx,
+      roomToUnread,
+      labels
+    );
+    expect(entry.item.preview).toBeUndefined();
+  });
+
+  it('шифрованное сообщение показывает расшифрованное тело', () => {
+    const mx = makeMx({
+      '!a:example.org': makeRoom(
+        [
+          {
+            id: 'e1',
+            type: 'm.room.encrypted',
+            sender: '@al:example.org',
+            content: { msgtype: 'm.text', body: 'Secret' },
+          },
+        ],
+        'e0',
+        { '@al:example.org': 'Al' }
+      ),
+    });
+    const roomToUnread: RoomToUnread = new Map([
+      ['!a:example.org', { total: 1, highlight: 0, from: null }],
+    ]);
+
+    const [entry] = buildUnreadPaletteItems(
+      [makeRoomItem('!a:example.org')],
+      mx,
+      roomToUnread,
+      labels
+    );
+    expect(entry.item.preview).toBe('Al: Secret');
+  });
+
+  it('нерасшифрованное сообщение показывает плейсхолдер', () => {
+    const mx = makeMx({
+      '!a:example.org': makeRoom(
+        [
+          {
+            id: 'e1',
+            type: 'm.room.encrypted',
+            sender: '@al:example.org',
+            content: {},
+            decryptionFailure: true,
+          },
+        ],
+        'e0'
+      ),
+    });
+    const roomToUnread: RoomToUnread = new Map([
+      ['!a:example.org', { total: 1, highlight: 0, from: null }],
+    ]);
+
+    const [entry] = buildUnreadPaletteItems(
+      [makeRoomItem('!a:example.org')],
+      mx,
+      roomToUnread,
+      labels
+    );
+    expect(entry.item.preview).toBe('al: [Encrypted message]');
   });
 
   it('отбрасывает комнаты без непрочитанных', () => {

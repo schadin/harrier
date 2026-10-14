@@ -75,7 +75,8 @@
       "audio": "[Audio]",
       "file": "[Datei]",
       "sticker": "[Sticker]",
-      "redacted": "[Gelöschte Nachricht]"
+      "redacted": "[Gelöschte Nachricht]",
+      "encrypted": "[Verschlüsselte Nachricht]"
     }
   }
 }

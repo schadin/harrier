@@ -16,7 +16,10 @@ export type UnreadPreviewLabels = {
   file: string;
   sticker: string;
   redacted: string;
+  encrypted: string;
 };
+
+const MESSAGE_EVENT_TYPES = ['m.room.message', 'm.room.encrypted', 'm.sticker'];
 
 const PREVIEW_BODY_LIMIT = 120;
 export const UNREAD_LIST_LIMIT = 30;
@@ -40,12 +43,14 @@ const getMessagePreviewBody = (mEvent: MatrixEvent, labels: UnreadPreviewLabels)
   const content = mEvent.getContent();
 
   if (mEvent.isRedacted()) return labels.redacted;
+  if (mEvent.isDecryptionFailure()) return labels.encrypted;
   if (mEvent.getType() === 'm.sticker') return labels.sticker;
 
   const labelKey = msgTypeToLabelKey(content.msgtype);
   if (labelKey) return labels[labelKey];
 
   const body = typeof content.body === 'string' ? content.body : '';
+  if (!body) return labels.encrypted;
   return body.length > PREVIEW_BODY_LIMIT ? `${body.slice(0, PREVIEW_BODY_LIMIT)}…` : body;
 };
 
@@ -58,8 +63,10 @@ const getEventSenderName = (mx: MatrixClient, room: Room, senderId: string): str
 };
 
 /**
- * Первое непрочитанное сообщение комнаты: первое событие после
- * прочитанного (read receipt) в живой таймлайн.
+ * Первое непрочитанное сообщение комнаты: первое входящее (не своё) событие
+ * после прочитанного (read receipt) в живой таймлайн. Собственные сообщения
+ * пропускаются — read receipt не сдвигается при их отправке, поэтому они не
+ * должны попадать в превью как «непрочитанные».
  */
 const getFirstUnreadEvent = (room: Room, myUserId: string): MatrixEvent | undefined => {
   const readUpToId = room.getEventReadUpTo(myUserId);
@@ -75,7 +82,8 @@ const getFirstUnreadEvent = (room: Room, myUserId: string): MatrixEvent | undefi
 
   for (let i = startIndex; i < timeline.length; i += 1) {
     const ev = timeline[i];
-    if (ev && (ev.getType() === 'm.room.message' || ev.getType() === 'm.sticker')) {
+    const isOwn = ev?.getSender() === myUserId;
+    if (ev && !isOwn && MESSAGE_EVENT_TYPES.includes(ev.getType())) {
       return ev;
     }
   }

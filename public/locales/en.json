@@ -119,7 +119,8 @@
       "audio": "[Audio]",
       "file": "[File]",
       "sticker": "[Sticker]",
-      "redacted": "[Deleted message]"
+      "redacted": "[Deleted message]",
+      "encrypted": "[Encrypted message]"
     }
   }
 }
