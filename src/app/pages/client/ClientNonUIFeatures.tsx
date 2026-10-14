@@ -37,6 +37,7 @@ import {
 } from '../../plugins/custom-status';
 import {
   applyAutostart,
+  applySingleInstance,
   listenTrayStatus,
   setActiveStatus,
   setDesktopSettings,
@@ -109,6 +110,7 @@ function DesktopFeatures() {
   const [customPresets] = useSetting(settingsAtom, 'statusPresets');
   const [statusNoticeRoomId] = useSetting(settingsAtom, 'statusNoticeRoomId');
   const [autostart, setAutostartSetting] = useSetting(settingsAtom, 'autostart');
+  const [singleInstance, setSingleInstanceSetting] = useSetting(settingsAtom, 'singleInstance');
 
   useEffect(() => {
     if (!isTauri()) return undefined;
@@ -132,6 +134,20 @@ function DesktopFeatures() {
       clearTimeout(timer);
     };
   }, [autostart, setAutostartSetting]);
+
+  useEffect(() => {
+    if (!isTauri()) return undefined;
+    let disposed = false;
+    const timer = setTimeout(() => {
+      applySingleInstance(singleInstance).then((applied) => {
+        if (!disposed && !applied) setSingleInstanceSetting(false);
+      });
+    }, 100);
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+    };
+  }, [singleInstance, setSingleInstanceSetting]);
 
   useEffect(() => {
     if (!isTauri()) return undefined;

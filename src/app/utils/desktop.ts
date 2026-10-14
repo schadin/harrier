@@ -54,6 +54,22 @@ export async function applyAutostart(enabled: boolean): Promise<boolean> {
   }
 }
 
+/**
+ * Записывает флаг «Single instance» в файл каталога данных через команду Rust.
+ * Возвращает false в веб-режиме и при ошибке записи, чтобы переключатель
+ * вернуть в прежнее положение.
+ */
+export async function applySingleInstance(enabled: boolean): Promise<boolean> {
+  if (!isTauri()) return false;
+  try {
+    await invoke('set_single_instance', { enabled });
+    return true;
+  } catch (e) {
+    console.error('applySingleInstance failed', e);
+    return false;
+  }
+}
+
 export async function setTrayIcon(bytes: Uint8Array): Promise<void> {
   if (!isTauri()) return;
   try {

@@ -367,6 +367,7 @@ function Appearance() {
 function Desktop() {
   const [showTrayIcon, setShowTrayIcon] = useSetting(settingsAtom, 'showTrayIcon');
   const [autostart, setAutostart] = useSetting(settingsAtom, 'autostart');
+  const [singleInstance, setSingleInstance] = useSetting(settingsAtom, 'singleInstance');
 
   if (!isTauri()) return null;
 
@@ -383,6 +384,11 @@ function Desktop() {
           title="Launch at Login"
           description="Start Harrier automatically when you log in to the system."
           after={<Switch variant="Primary" value={autostart} onChange={setAutostart} />}
+        />
+        <SettingTile
+          title="Single Instance"
+          description="Activate the already running window instead of opening a second instance."
+          after={<Switch variant="Primary" value={singleInstance} onChange={setSingleInstance} />}
         />
       </SequenceCard>
     </Box>
