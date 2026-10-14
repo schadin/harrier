@@ -1,8 +1,9 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Box, Text, config } from 'folds';
 import { EventType } from 'matrix-js-sdk';
 import { ReactEditor } from 'slate-react';
 import { isKeyHotkey } from 'is-hotkey';
+import { useAtomValue } from 'jotai';
 import { useStateEvent } from '../../hooks/useStateEvent';
 import { StateEvent } from '../../../types/matrix/room';
 import { usePowerLevelsContext } from '../../hooks/usePowerLevels';
@@ -22,8 +23,22 @@ import { useSetting } from '../../state/hooks/settings';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useRoomCreators } from '../../hooks/useRoomCreators';
 import { useRoom, useIsDirectRoom } from '../../hooks/useRoom';
+import { messageInputFocusAtom } from '../../state/messageInputFocus';
+import { searchModalAtom } from '../../state/searchModal';
 
 const FN_KEYS_REGEX = /^F\d+$/;
+
+/** Ctrl/Cmd+Shift+M — фокус на поле ввода сообщения (по event.code, любая раскладка) */
+const isMessageInputHotkey = (evt: KeyboardEvent): boolean =>
+  (evt.ctrlKey || evt.metaKey) && evt.shiftKey && !evt.altKey && evt.code === 'KeyM';
+
+/** Открыто ли модальное окно (палитра или любой портал) */
+const isOverlayOpened = (paletteOpened: boolean): boolean => {
+  if (paletteOpened) return true;
+  const portalContainer = document.getElementById('portalContainer');
+  return !!portalContainer && portalContainer.children.length > 0;
+};
+
 const shouldFocusMessageField = (evt: KeyboardEvent): boolean => {
   const { code } = evt;
   if (evt.metaKey || evt.altKey || evt.ctrlKey) {
@@ -77,20 +92,45 @@ export function RoomView({ eventId }: { eventId?: string }) {
   const permissions = useRoomPermissions(creators, powerLevels);
   const canMessage = permissions.event(EventType.RoomMessage, mx.getSafeUserId());
 
+  const paletteOpened = useAtomValue(searchModalAtom);
+  const messageInputFocusToken = useAtomValue(messageInputFocusAtom);
+  const handledFocusTokenRef = useRef(0);
+
+  // Фокус на композер после перехода в комнату из Command Palette
+  useEffect(() => {
+    if (
+      messageInputFocusToken === 0 ||
+      messageInputFocusToken === handledFocusTokenRef.current ||
+      !canMessage
+    ) {
+      handledFocusTokenRef.current = messageInputFocusToken;
+      return undefined;
+    }
+    handledFocusTokenRef.current = messageInputFocusToken;
+
+    // композер может монтироваться в том же рендере — фокусируем после кадра
+    const frame = requestAnimationFrame(() => ReactEditor.focus(editor));
+    return () => cancelAnimationFrame(frame);
+  }, [messageInputFocusToken, canMessage, editor]);
+
   useKeyDown(
     window,
     useCallback(
       (evt) => {
-        if (editableActiveElement()) return;
-        const portalContainer = document.getElementById('portalContainer');
-        if (portalContainer && portalContainer.children.length > 0) {
+        if (isMessageInputHotkey(evt)) {
+          if (isOverlayOpened(paletteOpened)) return;
+          evt.preventDefault();
+          ReactEditor.focus(editor);
           return;
         }
+
+        if (editableActiveElement()) return;
+        if (isOverlayOpened(paletteOpened)) return;
         if (shouldFocusMessageField(evt) || isKeyHotkey('mod+v', evt)) {
           ReactEditor.focus(editor);
         }
       },
-      [editor]
+      [editor, paletteOpened]
     )
   );
 

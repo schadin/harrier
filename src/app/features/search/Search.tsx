@@ -52,6 +52,7 @@ import { getRecentPaletteItemIds, pushRecentPaletteItem } from './palette/recent
 import { usePaletteItems } from './palette/usePaletteItems';
 import { UnreadPreviewLabels, buildUnreadPaletteItems, matchUnreadItem } from './palette/unread';
 import { HighlightedText } from './palette/HighlightedText';
+import { useRequestMessageInputFocus } from '../../state/messageInputFocus';
 
 const CATEGORY_LABEL_KEYS: Record<PaletteCategory, [string, string]> = {
   [PaletteCategory.Actions]: ['CommandPalette.categories.actions', 'Actions'],
@@ -164,6 +165,7 @@ export function Search({ requestClose }: SearchProps) {
   const [unreadMode, setUnreadMode] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const handleLogout = useCallback(() => setLogoutOpen(true), []);
+  const requestMessageInputFocus = useRequestMessageInputFocus();
 
   const allRoomsSet = useAllJoinedRoomsSet();
   const getRoom = useGetRoom(allRoomsSet);
@@ -211,7 +213,11 @@ export function Search({ requestClose }: SearchProps) {
     async (scored: ScoredPaletteItem) => {
       if (busy) return;
       pushRecentPaletteItem(scored.item.id);
+      const opensChat =
+        scored.item.category === PaletteCategory.Rooms ||
+        scored.item.category === PaletteCategory.People;
       const result = scored.item.run();
+      if (opensChat) requestMessageInputFocus();
       if (result instanceof Promise) {
         setBusy(true);
         try {
@@ -223,7 +229,7 @@ export function Search({ requestClose }: SearchProps) {
       }
       if (!scored.item.keepOpen) requestClose();
     },
-    [busy, requestClose]
+    [busy, requestClose, requestMessageInputFocus]
   );
 
   const handleInputChange: ChangeEventHandler<HTMLInputElement> = (evt) => {

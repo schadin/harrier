@@ -783,15 +783,20 @@ function Editor() {
 }
 
 function Shortcuts() {
+  const modKey = isMacOS() ? KeySymbol.Command : 'Ctrl';
   return (
     <Box direction="Column" gap="100">
       <Text size="L400">Shortcuts</Text>
       <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
         <SettingTile
           title="Command Palette"
-          description={`Search rooms, people and actions, and run commands from the keyboard. Open with ${
-            isMacOS() ? KeySymbol.Command : 'Ctrl'
-          } + P.`}
+          description={`Search rooms, people and actions, and run commands from the keyboard. Open with ${modKey} + P.`}
+        />
+      </SequenceCard>
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
+        <SettingTile
+          title="Focus Message Input"
+          description={`Move the cursor to the message field. Use ${modKey} + Shift + M.`}
         />
       </SequenceCard>
     </Box>
