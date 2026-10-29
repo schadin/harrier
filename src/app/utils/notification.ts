@@ -10,8 +10,7 @@ let tauriDetected: boolean | undefined;
 
 export function isTauri(): boolean {
   if (tauriDetected !== undefined) return tauriDetected;
-  tauriDetected =
-    typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+  tauriDetected = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
   return tauriDetected;
 }
 
@@ -99,9 +98,7 @@ export function extractMessagePreview(mEvent: MatrixEvent): string {
   return body ? truncate(body, 100) : 'Sent a message';
 }
 
-export function showNotification(
-  options: ShowNotificationOptions
-): { close: () => void } {
+export function showNotification(options: ShowNotificationOptions): { close: () => void } {
   if (isTauri()) {
     const id = options.tag ? hashStringToInt(options.tag) : undefined;
 

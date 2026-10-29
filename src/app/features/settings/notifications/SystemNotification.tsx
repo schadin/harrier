@@ -28,7 +28,7 @@ function EmailNotification() {
             device_display_name: email,
             lang: 'en',
             data: {
-              brand: 'Cinny',
+              brand: 'Harrier',
             },
             append: true,
           });
@@ -86,8 +86,11 @@ function EmailNotification() {
 }
 
 export function SystemNotification() {
-  const { state: notifPermission, loading, request: requestNotificationPermission } =
-    useNotificationPermission();
+  const {
+    state: notifPermission,
+    loading,
+    request: requestNotificationPermission,
+  } = useNotificationPermission();
   const [showNotifications, setShowNotifications] = useSetting(settingsAtom, 'showNotifications');
   const [isNotificationSounds, setIsNotificationSounds] = useSetting(
     settingsAtom,

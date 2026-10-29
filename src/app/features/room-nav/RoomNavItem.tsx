@@ -382,7 +382,9 @@ export function RoomNavItem({
                     </Text>
                   )}
                   {dmStatus?.text && dmPresence && (
-                    <Text as="span" size="T200" priority="400">•</Text>
+                    <Text as="span" size="T200" priority="400">
+                      •
+                    </Text>
                   )}
                   {dmPresence && <PresenceStatus presence={dmPresence} />}
                 </Box>

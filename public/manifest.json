@@ -1,7 +1,7 @@
 {
-  "name": "Cinny",
-  "short_name": "Cinny",
-  "description": "Yet another matrix client",
+  "name": "Harrier",
+  "short_name": "Harrier",
+  "description": "Matrix web client powered by Cinny",
   "dir": "auto",
   "lang": "en-US",
   "display": "standalone",
