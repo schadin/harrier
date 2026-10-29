@@ -26,13 +26,6 @@ jobs:
           package-manager-cache: false
       - name: Install dependencies
         run: npm ci
-      - name: Checkout rebrand assets
-        run: |
-          git clone --depth 1 --branch harrier https://github.com/schadin/harrier-desktop.git /tmp/rebrand
-      - name: Apply rebrand
-        env:
-          REBRAND_CINNY_DIR: ${{ github.workspace }}
-        run: node /tmp/rebrand/scripts/rebrand.mjs apply
       - name: Get version
         id: vars
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
@@ -42,11 +35,6 @@ jobs:
           VITE_VERSION: ${{ steps.vars.outputs.version }}
           NODE_OPTIONS: '--max_old_space_size=4096'
         run: npm run build
-      - name: Revert rebrand
-        if: always()
-        env:
-          REBRAND_CINNY_DIR: ${{ github.workspace }}
-        run: node /tmp/rebrand/scripts/rebrand.mjs revert
       - name: Add .nojekyll
         run: touch dist/.nojekyll
       - name: Configure Pages

@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { MatrixEvent, MatrixEventEvent, Room, RoomEvent, RoomEventHandlerMap } from 'matrix-js-sdk';
 
 import { roomToUnreadAtom, unreadEqual, unreadInfoToUnread } from '../../state/room/roomToUnread';
-import LogoSVG from '../../../../public/res/svg/cinny.svg';
-import LogoUnreadSVG from '../../../../public/res/svg/cinny-unread.svg';
-import LogoHighlightSVG from '../../../../public/res/svg/cinny-highlight.svg';
+import LogoSVG from '../../../../public/res/svg/harrier.svg';
+import LogoUnreadSVG from '../../../../public/res/svg/harrier-unread.svg';
+import LogoHighlightSVG from '../../../../public/res/svg/harrier-highlight.svg';
 import NotificationSound from '../../../../public/sound/notification.ogg';
 import InviteSound from '../../../../public/sound/invite.ogg';
 import { setFavicon } from '../../utils/dom';
