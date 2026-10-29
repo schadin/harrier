@@ -4,15 +4,15 @@ module.exports = {
     es2021: true,
   },
   extends: [
-    "eslint:recommended",
-    "plugin:react/recommended",
-    "plugin:react-hooks/recommended",
-    "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended",
+    'eslint:recommended',
+    'plugin:react/recommended',
+    'plugin:react-hooks/recommended',
+    'plugin:@typescript-eslint/eslint-recommended',
+    'plugin:@typescript-eslint/recommended',
     'airbnb',
     'prettier',
   ],
-  parser: "@typescript-eslint/parser",
+  parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaFeatures: {
       jsx: true,
@@ -20,49 +20,43 @@ module.exports = {
     ecmaVersion: 'latest',
     sourceType: 'module',
   },
-  "globals": {
-    JSX: "readonly",
-    __CINNY_VERSION__: "readonly"
+  globals: {
+    JSX: 'readonly',
+    __CINNY_VERSION__: 'readonly',
   },
-  plugins: [
-    'react',
-    '@typescript-eslint'
-  ],
+  plugins: ['react', '@typescript-eslint'],
   rules: {
     'linebreak-style': 0,
     'no-underscore-dangle': 0,
     'no-shadow': 'off',
     'no-use-before-define': ['error', { functions: false, classes: true, variables: true }],
 
-    "import/prefer-default-export": "off",
-    "import/extensions": "off",
-    "import/no-unresolved": "off",
-    "import/no-extraneous-dependencies": [
-      "error",
+    'import/prefer-default-export': 'off',
+    'import/extensions': 'off',
+    'import/no-unresolved': 'off',
+    'import/no-extraneous-dependencies': [
+      'error',
       {
         devDependencies: true,
       },
     ],
 
-    'react/no-unstable-nested-components': [
+    'react/no-unstable-nested-components': ['error', { allowAsProps: true }],
+    'react/jsx-filename-extension': [
       'error',
-      { allowAsProps: true },
-    ],
-    "react/jsx-filename-extension": [
-      "error",
       {
-        extensions: [".tsx", ".jsx"],
+        extensions: ['.tsx', '.jsx'],
       },
     ],
 
-    "react/require-default-props": "off",
-    "react/jsx-props-no-spreading": "off",
-    "react-hooks/rules-of-hooks": "error",
-    "react-hooks/exhaustive-deps": "error",
+    'react/require-default-props': 'off',
+    'react/jsx-props-no-spreading': 'off',
+    'react-hooks/rules-of-hooks': 'error',
+    'react-hooks/exhaustive-deps': 'error',
 
-    "@typescript-eslint/no-unused-vars": "error",
-    "@typescript-eslint/no-explicit-any": "warn",
-    "@typescript-eslint/no-shadow": "error"
+    '@typescript-eslint/no-unused-vars': 'error',
+    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-shadow': 'error',
   },
   overrides: [
     {

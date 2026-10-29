@@ -51,7 +51,9 @@ export function UserHero({ userId, avatarUrl, presence, action }: UserHeroProps)
         <AvatarPresence
           className={css.UserAvatarContainer}
           badge={
-            presence && <PresenceBadge presence={presence.presence} lastActiveTs={presence.lastActiveTs} />
+            presence && (
+              <PresenceBadge presence={presence.presence} lastActiveTs={presence.lastActiveTs} />
+            )
           }
         >
           <Avatar
@@ -129,12 +131,32 @@ export function UserHeroName({ displayName, userId, presence }: UserHeroNameProp
       </Box>
       {hasStatusLine && (
         <Box alignItems="Center" gap="100" wrap="Wrap">
-          {lastActiveLabel && <Text size="T200" priority="300">{lastActiveLabel}</Text>}
-          {lastActiveLabel && (status?.emoji || customText || statusTime) && <Text size="T200" priority="300">•</Text>}
+          {lastActiveLabel && (
+            <Text size="T200" priority="300">
+              {lastActiveLabel}
+            </Text>
+          )}
+          {lastActiveLabel && (status?.emoji || customText || statusTime) && (
+            <Text size="T200" priority="300">
+              •
+            </Text>
+          )}
           {status?.emoji && <Text size="T200">{status.emoji}</Text>}
-          {customText && <Text size="T200" priority="300" truncate>{customText}</Text>}
-          {customText && statusTime && <Text size="T200" priority="300">•</Text>}
-          {statusTime && <Text size="T200" priority="300">{statusTime}</Text>}
+          {customText && (
+            <Text size="T200" priority="300" truncate>
+              {customText}
+            </Text>
+          )}
+          {customText && statusTime && (
+            <Text size="T200" priority="300">
+              •
+            </Text>
+          )}
+          {statusTime && (
+            <Text size="T200" priority="300">
+              {statusTime}
+            </Text>
+          )}
         </Box>
       )}
     </Box>

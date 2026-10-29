@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  getNotificationPermission,
-  requestNotificationPermission,
-} from '../utils/notification';
+import { getNotificationPermission, requestNotificationPermission } from '../utils/notification';
 
 export function useNotificationPermission() {
   const [state, setState] = useState<PermissionState>('prompt');
