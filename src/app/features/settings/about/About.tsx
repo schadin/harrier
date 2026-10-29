@@ -54,7 +54,7 @@ export function About({ requestClose }: AboutProps) {
                   <Box gap="200" wrap="Wrap">
                     <Button
                       as="a"
-                      href="https://github.com/schadin/harrier-desktop"
+                      href="https://github.com/schadin/harrier"
                       rel="noreferrer noopener"
                       target="_blank"
                       variant="Secondary"

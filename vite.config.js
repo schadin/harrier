@@ -39,6 +39,10 @@ const copyFiles = {
       dest: 'public/',
     },
     {
+      src: 'public/res/favicon-48x48.png',
+      dest: 'public/res',
+    },
+    {
       src: 'public/locales',
       dest: 'public/',
     },
